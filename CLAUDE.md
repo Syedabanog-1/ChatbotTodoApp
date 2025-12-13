@@ -208,3 +208,10 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- Python 3.11+ (required for OpenAI Agents SDK and MCP compatibility) (001-multimodal-todo-chatbot)
+- SQLite (local file-based database) exposed as MCP resource for task persistence (001-multimodal-todo-chatbot)
+
+## Recent Changes
+- 001-multimodal-todo-chatbot: Added Python 3.11+ (required for OpenAI Agents SDK and MCP compatibility)
