@@ -42,7 +42,7 @@
 - [X] T007 Create ConversationContext entity in src/models/conversation_context.py with Exchange dataclass
 - [X] T008 Create UserPreferences entity in src/models/user_preferences.py with default values
 - [X] T009 Create TaskRepository service in src/services/task_repository.py with SQLite database initialization (tasks table, indexes, triggers)
-- [ ] T010 Create MCP resource wrapper for SQLite task persistence in src/services/task_repository.py (@server.resource() for task://list, task://get/{id})
+- [X] T010 Create MCP resource wrapper for SQLite task persistence in src/services/task_mcp_server.py (@server.resource() for task://list, task://get/{id}, task://schema)
 - [X] T011 [P] Create MCP helpers utility module in src/lib/mcp_helpers.py for tool registration and resource exposure patterns
 - [X] T012 [P] Create logging configuration in src/lib/logging_config.py with internal error tracking setup
 - [X] T013 [P] Setup environment configuration loader in src/lib/config.py to read .env file and validate API keys
@@ -60,11 +60,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [P] [US1] Create Intent Classifier Agent in src/agents/intent_classifier_agent.py using GPT-4 structured output for CRUD classification
-- [ ] T016 [P] [US1] Create Task Add Agent in src/agents/task_agents/task_add_agent.py with MCP tool @agent.tool() decorator
-- [ ] T017 [P] [US1] Create Task Read Agent in src/agents/task_agents/task_read_agent.py with filtering/searching capabilities
-- [ ] T018 [P] [US1] Create Task Update Agent in src/agents/task_agents/task_update_agent.py for full task replacement
-- [ ] T019 [P] [US1] Create Task Delete Agent in src/agents/task_agents/task_delete_agent.py with confirmation workflow
+- [X] T015 [P] [US1] Create Intent Classifier Agent in src/agents/intent_classifier_agent.py using GPT-4 structured output for CRUD classification
+- [X] T016 [P] [US1] Create Task Add Agent in src/agents/task_agents/task_add_agent.py with MCP tool @agent.tool() decorator
+- [X] T017 [P] [US1] Create Task Read Agent in src/agents/task_agents/task_read_agent.py with filtering/searching capabilities
+- [X] T018 [P] [US1] Create Task Update Agent in src/agents/task_agents/task_update_agent.py for full task replacement
+- [X] T019 [P] [US1] Create Task Delete Agent in src/agents/task_agents/task_delete_agent.py with confirmation workflow
 - [ ] T020 [US1] Create Master Chat Agent in src/agents/master_chat_agent.py with Manager pattern orchestration (coordinates Intent Classifier and Task agents)
 - [ ] T021 [US1] Implement conversation context management in Master Chat Agent (add_exchange, track referenced tasks)
 - [ ] T022 [US1] Implement ChatKit console interface in src/cli/chatbot_cli.py with simple input/output loop
