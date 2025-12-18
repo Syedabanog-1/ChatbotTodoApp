@@ -1,167 +1,263 @@
-"""Main entry point for the chatbot CLI application."""
+"""
+Main entry point for the chatbot CLI application.
+Console-first, API-ready design.
+"""
 
 import sys
+import os
 from pathlib import Path
 
-# Add src to path for imports
+# ==============================
+# Windows UTF-8 Console Fix
+# ==============================
+if sys.platform == "win32":
+    try:
+        os.system("chcp 65001 > nul 2>&1")
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# ==============================
+# Path Fix for Imports
+# ==============================
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# ==============================
+# FastAPI (API-ready layer)
+# ==============================
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from pydantic import BaseModel
+
+# Global API State
+api_resources = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize application on startup
+    try:
+        task_repo, user_prefs, master_agent, logger, voice_service, translation_service = initialize_application()
+        api_resources['agent'] = master_agent
+        api_resources['prefs'] = user_prefs
+        api_resources['translator'] = translation_service
+        logger.info("API initialized successfully")
+    except Exception as e:
+        print(f"API Startup Error: {e}")
+    yield
+    # Cleanup if needed
+
+app = FastAPI(title="AI Todo Chatbot API", version="1.0.0", lifespan=lifespan)
+
+class ChatRequest(BaseModel):
+    message: str
+    language: str | None = None
+
+
+
+@app.get("/")
+def health():
+    return {"status": "ok", "mode": "api-ready"}
+
+@app.post("/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    Process a chat message via the AI Agent.
+    """
+    agent = api_resources.get('agent')
+    if not agent:
+        return {"success": False, "message": "Agent not active"}
+    
+    # Optional: Handle language translation here using api_resources['translator']
+    # For now, pass direct message
+    
+    msg = request.message
+    # If language is provided, we could translate input/output
+    # But sticking to simple agent process for now as per minimal request
+    
+    result = agent.process(msg)
+    return result
+
+
+# ==============================
+# Internal Imports
+# ==============================
 from src.lib.config import config
-from src.lib.logging_config import setup_logging, get_logger
+from src.lib.logging_config import setup_logging
 from src.services.task_repository import TaskRepository
 from src.models.user_preferences import UserPreferences
+from src.agents.master_chat_agent import MasterChatAgent
+from src.services.voice_service import VoiceService
+from src.services.translation_service import TranslationService
 
 
+# ==============================
+# Initialization
+# ==============================
 def initialize_application():
     """Initialize application components."""
-    # Setup logging
     logger = setup_logging(config.log_level, config.log_file)
     logger.info("Starting AI-Powered Multilingual Voice-Enabled Todo Chatbot")
 
-    # Validate configuration
     is_valid, errors = config.validate()
     if not is_valid:
-        logger.error("Configuration validation failed:")
-        for error in errors:
-            logger.error(f"  - {error}")
         print("\n❌ Configuration Error:")
         for error in errors:
             print(f"  - {error}")
-        print("\nPlease check your .env file and ensure OPENAI_API_KEY is set.")
+        print("\nPlease check your .env file.")
         sys.exit(1)
 
-    # Initialize database
-    logger.info(f"Initializing database at {config.database_path}")
     task_repo = TaskRepository(config.database_path)
-
-    # Load or create user preferences
-    logger.info(f"Loading user preferences from {config.preferences_path}")
     user_prefs = UserPreferences.load_from_file(config.preferences_path)
-
-    # Save default preferences if file doesn't exist
     user_prefs.save_to_file(config.preferences_path)
 
+    master_agent = MasterChatAgent(
+        api_key=config.openai_api_key,
+        repository=task_repo
+    )
+
+    voice_service = VoiceService()
+    translation_service = TranslationService()
+
     logger.info("Application initialized successfully")
-    return task_repo, user_prefs, logger
+    return task_repo, user_prefs, master_agent, logger, voice_service, translation_service
 
 
+# ==============================
+# CLI UI Helpers
+# ==============================
 def print_welcome():
-    """Print welcome message."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🤖 AI-Powered Multilingual Voice-Enabled Todo Chatbot v1.0")
-    print("="*60)
-    print("\nWelcome! I can help you manage your tasks in multiple languages.")
-    print("Type your command or '/help' for assistance.\n")
+    print("=" * 60)
+    print("\nType your command or '/help' for assistance.\n")
 
 
 def print_help():
-    """Print help message."""
     print("\n📚 Available Commands:")
-    print("  /help           - Show this help message")
-    print("  /voice on       - Enable voice input/output")
-    print("  /voice off      - Disable voice mode")
-    print("  /language <code> - Set preferred language (e.g., /language es)")
-    print("  /clear          - Clear conversation context")
-    print("  /settings       - View/modify user preferences")
-    print("  /exit           - Quit the chatbot")
-    print("\n💡 Example Commands:")
-    print("  - Add a task to buy groceries")
-    print("  - Show my tasks")
-    print("  - Mark task 1 as completed")
-    print("  - Delete task 2")
-    print("  - Añadir tarea comprar leche (Spanish)")
+    print("  /help            - Show help")
+    print("  /voice on|off    - Toggle voice mode")
+    print("  /language <code> - Set preferred language")
+    print("  /settings        - View settings")
+    print("  /clear           - Clear context")
+    print("  /exit            - Quit")
     print()
 
 
+# ==============================
+# CLI Main Loop
+# ==============================
 def main():
-    """Main application loop."""
     try:
-        # Initialize application
-        task_repo, user_prefs, logger = initialize_application()
-
-        # Print welcome message
+        task_repo, user_prefs, master_agent, logger, voice_service, translation_service = initialize_application()
         print_welcome()
-        print(f"✅ Database initialized at {config.database_path}")
-        print(f"✅ Preferences loaded from {config.preferences_path}")
-        print()
 
-        # Main interaction loop
         while True:
             try:
-                user_input = input("You: ").strip()
+                # 1. Input Acquisition
+                if user_prefs.voice_input_enabled:
+                    # Capture voice
+                    lang = user_prefs.preferred_language if user_prefs.preferred_language else 'en'
+                    user_input = voice_service.listen(lang=lang)
+                    if user_input:
+                        print(f"You (Voice): {user_input}")
+                    else:
+                        # Fallback to text input if voice fails or user cancels
+                        # Or loop? Better to allow fallback to text for that turn
+                        # But loop expects input.
+                        # If voice detected nothing, asking to type is good UX.
+                        user_input = input("You (Voice failed, type here): ").strip()
+                else:
+                    user_input = input("You: ").strip()
 
                 if not user_input:
                     continue
 
-                # Handle special commands
-                if user_input == '/help':
+                if user_input == "/help":
                     print_help()
                     continue
 
-                if user_input == '/exit':
-                    print("\n👋 Goodbye! Have a great day!")
-                    logger.info("User exited application")
+                if user_input == "/exit":
+                    print("\n👋 Goodbye!")
                     break
 
-                if user_input == '/settings':
-                    print(f"\n⚙️ Current Settings:")
-                    print(f"  Language: {user_prefs.preferred_language or 'Auto-detect'}")
-                    print(f"  Voice Input: {'Enabled' if user_prefs.voice_input_enabled else 'Disabled'}")
-                    print(f"  Voice Output: {'Enabled' if user_prefs.voice_output_enabled else 'Disabled'}")
-                    print(f"  Display Format: {user_prefs.display_format}")
-                    print(f"  TTS Voice: {user_prefs.tts_voice}")
-                    print()
+                if user_input == "/settings":
+                    print("\n⚙️ Settings:")
+                    print(f" Language: {user_prefs.preferred_language or 'Auto'}")
+                    print(f" Voice Input: {user_prefs.voice_input_enabled}")
+                    print(f" Voice Output: {user_prefs.voice_output_enabled}")
                     continue
 
-                if user_input.startswith('/voice '):
-                    mode = user_input[7:].lower()
-                    if mode == 'on':
-                        user_prefs.voice_input_enabled = True
-                        user_prefs.voice_output_enabled = True
-                        user_prefs.save_to_file(config.preferences_path)
-                        print("Chatbot: 🎤 Voice mode enabled.")
-                    elif mode == 'off':
-                        user_prefs.voice_input_enabled = False
-                        user_prefs.voice_output_enabled = False
-                        user_prefs.save_to_file(config.preferences_path)
-                        print("Chatbot: 🔇 Voice mode disabled.")
-                    else:
-                        print("Chatbot: Invalid voice command. Use '/voice on' or '/voice off'.")
-                    continue
-
-                if user_input.startswith('/language '):
-                    lang_code = user_input[10:].strip().lower()
-                    user_prefs.preferred_language = lang_code
+                if user_input.startswith("/voice "):
+                    mode = user_input.split(" ", 1)[1].lower()
+                    enabled = mode == "on"
+                    user_prefs.voice_input_enabled = enabled
+                    user_prefs.voice_output_enabled = enabled
                     user_prefs.save_to_file(config.preferences_path)
-                    print(f"Chatbot: 🌍 Language set to {lang_code}")
+                    print(f"🎤 Voice mode {'enabled' if enabled else 'disabled'}")
                     continue
 
-                if user_input == '/clear':
-                    print("Chatbot: 🧹 Conversation context cleared.")
+                if user_input.startswith("/language "):
+                    lang = user_input.split(" ", 1)[1]
+                    user_prefs.preferred_language = lang
+                    user_prefs.save_to_file(config.preferences_path)
+                    print(f"🌍 Language set to {lang}")
                     continue
 
-                # TODO: Process user input with agents
-                # For now, placeholder response
-                logger.info(f"User input: {user_input}")
-                print("Chatbot: I'm still being developed. Full agent integration coming soon!")
-                print("         For now, you can use /help to see available commands.")
+                if user_input == "/clear":
+                    master_agent.reset_context()
+                    print("🧹 Context cleared")
+                    continue
+
+                # 2. Input Translation (to English)
+                processed_input = user_input
+                target_lang = user_prefs.preferred_language
+                
+                if target_lang and target_lang.lower() != 'en' and not user_input.startswith("/"):
+                    # Translate to English for processing
+                    print("🌐 Translating input...")
+                    processed_input = translation_service.translate(user_input, "English")
+                    # print(f"  [Translated]: {processed_input}")
+
+                # 3. Process via AI Agent
+                result = master_agent.process(processed_input)
+
+                response_text = result.get('message')
+
+                # 4. Output Translation (to Target Language)
+                if target_lang and target_lang.lower() != 'en':
+                    # Translate response back to user's language
+                    # print("🌐 Translating response...")
+                    response_text = translation_service.translate(response_text, target_lang)
+
+                # 5. Output Display & Audio
+                if result.get("success"):
+                    print(f"Chatbot: {response_text}")
+                else:
+                    print(f"Chatbot: ❌ {response_text}")
+
+                if user_prefs.voice_output_enabled:
+                    voice_service.speak(response_text, lang=target_lang or 'en')
 
             except KeyboardInterrupt:
-                print("\n\n👋 Goodbye! Have a great day!")
-                logger.info("User interrupted application")
+                print("\n👋 Goodbye!")
+                break
+
+            except EOFError:
+                print("\n👋 Goodbye!")
                 break
 
             except Exception as e:
-                logger.error(f"Error processing input: {e}", exc_info=True)
-                print(f"Chatbot: ❌ An error occurred: {str(e)}")
-                print("         Please try again or type /help for assistance.")
+                logger.error(f"Runtime error: {e}", exc_info=True)
+                print("❌ Error occurred. Try again.")
 
     except Exception as e:
         print(f"\n❌ Fatal error: {e}")
-        if 'logger' in locals():
-            logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
 
 
-if __name__ == '__main__':
+# ==============================
+# CLI Entry Point
+# ==============================
+if __name__ == "__main__":
     main()
