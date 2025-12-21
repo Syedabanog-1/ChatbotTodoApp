@@ -27,6 +27,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 # FastAPI (API-ready layer)
 # ==============================
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
 
@@ -55,9 +57,33 @@ class ChatRequest(BaseModel):
 
 
 
-@app.get("/")
+@app.get("/health")
 def health():
     return {"status": "ok", "mode": "api-ready"}
+
+@app.get("/")
+async def serve_index():
+    """Serve the web interface."""
+    index_path = Path(__file__).parent.parent.parent / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"status": "ok", "mode": "api-ready"}
+
+@app.get("/styles.css")
+async def serve_styles():
+    """Serve the CSS file."""
+    css_path = Path(__file__).parent.parent.parent / "styles.css"
+    if css_path.exists():
+        return FileResponse(css_path, media_type="text/css")
+    return {"error": "Not found"}
+
+@app.get("/script.js")
+async def serve_script():
+    """Serve the JavaScript file."""
+    js_path = Path(__file__).parent.parent.parent / "script.js"
+    if js_path.exists():
+        return FileResponse(js_path, media_type="application/javascript")
+    return {"error": "Not found"}
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
