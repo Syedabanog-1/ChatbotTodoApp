@@ -1,5 +1,5 @@
 # Minimal dependencies for Vercel serverless deployment
-# For full local development, use requirements.full.txt
+# Only essential packages for web API
 
 # OpenAI API Client (essential for chatbot)
 openai>=1.50.0
