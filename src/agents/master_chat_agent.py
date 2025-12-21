@@ -80,7 +80,7 @@ class MasterChatAgent:
 
             # Step 3: Route to appropriate agent based on intent
             intent = classification.get('intent')
-            entities = classification.get('extracted_entities', {})
+            entities = classification.get('extracted_entities') or {}
 
             if intent == 'create':
                 result = self._handle_create(entities)
