@@ -2,18 +2,21 @@
 
 **Feature Branch**: `001-multimodal-todo-chatbot`
 **Created**: 2025-12-13
-**Status**: Draft
+**Updated**: 2025-12-21 (Web-First Architecture)
+**Status**: Active (MVP Deployed)
 **Input**: User description: "AI-Powered Multilingual Voice-Enabled Todo Chatbot with natural language processing, supporting text and voice input, automatic language detection and translation, and conversational task management"
+
+**Note**: This specification has been updated to reflect the web-first architecture. See [ADR-0001](../../history/adr/0001-architectural-pivot-from-console-first-to-web-first-deployment.md) for architectural decision rationale.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Text-Based Task Management in English (Priority: P1)
+### User Story 1 - Text-Based Task Management in English (Priority: P1) ✅ MVP DELIVERED
 
-A user opens the console application and types natural language commands in English to manage their todo tasks. They can add tasks, view all tasks, update existing tasks, and delete completed tasks through conversational interaction.
+A user opens the web application in their browser and types natural language commands in English via the chat interface to manage their todo tasks. They can add tasks, view all tasks, update existing tasks, and delete completed tasks through conversational interaction.
 
 **Why this priority**: This is the foundational capability - text-based task management with natural language understanding. Without this, no other features can function. It provides immediate value as a working todo system.
 
-**Independent Test**: Can be fully tested by launching the console app, typing commands like "add a task to buy groceries", "show my tasks", "mark task 1 as done", and verifying tasks are created, displayed, and managed correctly without any voice or translation features.
+**Independent Test**: Can be fully tested by opening the web app in a browser, typing commands in the chat input like "add a task to buy groceries", "show my tasks", "mark task 1 as done", and verifying tasks are created, displayed, and managed correctly without any voice or translation features.
 
 **Acceptance Scenarios**:
 
@@ -121,7 +124,7 @@ The system maintains conversation context across multiple exchanges, allowing us
 
 ### Functional Requirements
 
-- **FR-001**: System MUST accept natural language text input via console/terminal interface for all task operations
+- **FR-001**: System MUST accept natural language text input via web browser chat interface for all task operations
 - **FR-002**: System MUST parse user intent from natural language and classify it into task operations: Create, Read, Update, Patch, Delete
 - **FR-003**: System MUST support creating tasks with at minimum a description field; optionally support due date, priority, tags, and status fields
 - **FR-004**: System MUST persist tasks across sessions (data survives application restart)
@@ -186,16 +189,16 @@ The system maintains conversation context across multiple exchanges, allowing us
 
 ## Assumptions
 
-1. **Storage**: Tasks will be stored locally (file-based or embedded database) - no cloud sync or multi-user support in initial version
-2. **Authentication**: No user authentication required - single-user application on local machine
+1. **Storage**: Tasks will be stored server-side (SQLite database planned) - no cloud sync or multi-user support in initial version
+2. **Authentication**: No user authentication required - single-user application (serverless function per session)
 3. **Voice Quality**: Assumes standard microphone quality and relatively quiet environment for voice input; not optimized for noisy environments or low-quality audio
-4. **Language Support**: Initial version supports 7 languages (English, Spanish, French, Mandarin, Arabic, Hindi, German); additional languages can be added later
-5. **Internet Connectivity**: Translation and voice services may require internet connection; application will degrade gracefully to offline text-based English mode if connectivity is unavailable
+4. **Language Support**: MVP supports English only; future versions will support 7+ languages (Spanish, French, Mandarin, Arabic, Hindi, German)
+5. **Internet Connectivity**: Web application requires internet connection; OpenAI API calls require network access
 6. **Task Complexity**: Tasks are simple text-based items with optional metadata; no support for subtasks, attachments, or rich formatting in initial version
 7. **Performance**: Designed for personal use (up to 1000 tasks); not optimized for enterprise-scale task management
-8. **Platform**: Console-based application targeting Windows, macOS, and Linux terminal environments
-9. **Conversation Limits**: Context window maintains last 5 exchanges; older context is not retained (stateless beyond short-term memory)
-10. **Voice Output**: Text-to-speech is optional and user-controllable; defaults to text-only responses
+8. **Platform**: Web-based application accessible via modern browsers (Chrome, Firefox, Safari, Edge) on desktop and mobile devices
+9. **Conversation Limits**: MVP is stateless; future versions will maintain context for last 5 exchanges
+10. **Voice Output**: Text-to-speech is optional and user-controllable in future versions; MVP provides text-only responses
 
 ## Out of Scope
 
@@ -209,10 +212,10 @@ The following are explicitly excluded from this feature:
 6. **Subtasks**: No hierarchical task structures or dependencies
 7. **Recurring tasks**: No automatic task repetition or scheduling
 8. **Calendar integration**: No sync with Google Calendar, Outlook, or other calendar systems
-9. **Mobile app**: Console-only; no iOS/Android apps in this version
-10. **Web UI**: No web-based interface; terminal/console only
+9. **Native mobile app**: Web UI works on mobile browsers; no dedicated iOS/Android apps
+10. **Console CLI**: No command-line interface; web browser only
 11. **Smart suggestions**: No AI-powered task suggestions or auto-completion
 12. **Time tracking**: No built-in timer or time-spent tracking
-13. **Notifications**: No push notifications or reminders (user must check tasks manually)
+13. **Notifications**: No push notifications or reminders (user must check tasks manually in web UI)
 14. **Analytics**: No task completion statistics or productivity reports
 15. **Export/Import**: No bulk export to CSV/JSON or import from other todo apps

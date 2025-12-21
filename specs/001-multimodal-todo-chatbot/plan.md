@@ -1,112 +1,123 @@
 # Implementation Plan: AI-Powered Multilingual Voice-Enabled Todo Chatbot
 
-**Branch**: `001-multimodal-todo-chatbot` | **Date**: 2025-12-13 | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-multimodal-todo-chatbot` | **Date**: 2025-12-13 | **Updated**: 2025-12-21 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/001-multimodal-todo-chatbot/spec.md`
 
-**Note**: This plan follows the Spec-Driven Development (SDD) workflow and will be executed through `/sp.plan` (Phases 0-1) and `/sp.tasks` (Phase 2).
+**Note**: This plan has been updated to reflect the architectural pivot from console-first to web-first deployment (see ADR-0001). Original plan preserved console-based agent architecture; current implementation uses FastAPI web framework with phased feature rollout.
 
 ## Summary
 
-Build a console-based AI-powered todo chatbot that accepts natural language commands in both text and voice formats, automatically detects and translates between 7+ languages, and uses a modular agent architecture for intent classification, task management, and multimodal interaction. The system will be built using OpenAI Agents SDK, MCP for inter-agent communication, and ChatKit for conversational UI.
+Build a **web-based** AI-powered todo chatbot that accepts natural language commands via browser interface, with planned support for multilingual interaction and voice input. The system uses FastAPI for REST API backend, OpenAI API for AI capabilities (intent classification, language processing), and is deployed as a serverless application on Vercel.
 
-**Technical Approach**: Agent-first architecture where each capability (language detection, translation, STT, TTS, intent classification, CRUD operations) is implemented as an independent, composable agent. All agents communicate via MCP protocol, with a Master Chat Agent orchestrating workflows. Console interface built with OpenAI ChatKit, voice processing via Whisper API (STT) and OpenAI TTS API.
+**Technical Approach**: Web-first architecture with modular FastAPI backend. Core functionality includes intent-driven todo management using OpenAI API for natural language understanding, RESTful HTTP/JSON communication, and responsive HTML/CSS/JS frontend. Features are implemented in phases: P0 (MVP) delivers English text-based task management, P1 adds multilingual support, P2 adds voice capabilities.
+
+**Architectural Decision**: See [ADR-0001](../../history/adr/0001-architectural-pivot-from-console-first-to-web-first-deployment.md) for rationale behind pivot from console-first to web-first deployment.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (required for OpenAI Agents SDK and MCP compatibility)
+**Language/Version**: Python 3.11+ (for FastAPI async capabilities and OpenAI API compatibility)
 
 **Primary Dependencies**:
-- OpenAI Agents SDK (agent orchestration)
-- OpenAI ChatKit (console conversational UI)
-- Official MCP SDK (inter-agent communication, tool-calling)
-- OpenAI Whisper API (speech-to-text)
-- OpenAI TTS API (text-to-speech)
-- OpenAI GPT-4 API (language detection, translation, intent classification)
+- FastAPI (async REST API framework)
+- OpenAI API (GPT-3.5-turbo/GPT-4 for intent classification, language understanding, translation)
+- Uvicorn (ASGI server for local development)
+- HTML5/CSS3/JavaScript (vanilla - frontend)
+- Pydantic (request/response validation)
 
-**Storage**: SQLite (local file-based database) exposed as MCP resource for task persistence
+**Storage**:
+- **Current (MVP)**: In-memory Python list (todos: List[dict])
+- **Planned (P1)**: SQLite for persistent task storage
 
-**Testing**: pytest (contract tests, integration tests, unit tests, user scenario tests)
+**Testing**:
+- **Current (MVP)**: Manual testing via web UI and API endpoints
+- **Planned (Production)**: pytest (API contract tests, integration tests, user scenario tests)
 
-**Target Platform**: Cross-platform console (Windows, macOS, Linux) via terminal/command-line
+**Target Platform**: Web browser (cross-platform: Windows, macOS, Linux, mobile)
 
-**Project Type**: Single Python project with modular agent architecture
+**Project Type**: Web application (monolithic FastAPI backend + static frontend)
 
 **Performance Goals**:
 - Text command response: <2 seconds end-to-end
-- Voice command response: <4 seconds (including transcription)
+- Voice command response: <4 seconds (P2 - including transcription)
 - Intent classification accuracy: >95%
-- Language detection accuracy: >90%
-- Voice transcription accuracy: >85% (clean audio)
+- Language detection accuracy: >90% (P1)
+- API latency: <500ms for CRUD operations
 
 **Constraints**:
-- Console-only interface (no GUI)
-- Local-first (no cloud sync, single-user)
-- Internet required for voice/translation services (graceful degradation to English text-only when offline)
+- **Current**: Web-only interface (no CLI)
+- Single-user application (no authentication/multi-user support in MVP)
+- Internet required for OpenAI API calls
 - Max 1000 tasks optimized (personal use scale)
-- Conversation context: last 5 exchanges only
+- Stateless HTTP API (conversation context in P1+)
 
 **Scale/Scope**:
 - Personal productivity tool (single user)
-- 7+ languages supported (English, Spanish, French, Mandarin, Arabic, Hindi, German)
-- 10+ agents (Master Chat, Intent Classifier, Language Detector, Translator, Voice Processor, 5 Todo Operation Agents)
+- **Phase 0 (MVP)**: English text-based interaction
+- **Phase 1**: 7+ languages supported (English, Spanish, French, Mandarin, Arabic, Hindi, German)
+- **Phase 2**: Voice input (Web Speech API or OpenAI Whisper)
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Must pass before implementation. Checked against Constitution v2.0.0.*
 
-**Principle I - Agent-First Architecture**: ✅ PASS
-- Each capability (intent classification, language detection, translation, STT, TTS, CRUD operations) designed as independent agent
-- Agents communicate via MCP protocol
-- Single responsibility per agent (e.g., Intent Classifier only classifies, Task Add Agent only adds tasks)
-- Master Chat Agent orchestrates multi-agent workflows
+**Reference**: Constitution v2.0.0 (amended 2025-12-21) - [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
+**Architectural Decision**: [ADR-0001](../../history/adr/0001-architectural-pivot-from-console-first-to-web-first-deployment.md) documents pivot from console-first to web-first
 
-**Principle II - OpenAI Technology Stack**: ✅ PASS
-- OpenAI ChatKit for conversational UI
-- OpenAI Agents SDK for agent lifecycle and orchestration
-- Official MCP SDK for all tool-calling and inter-agent communication
-- No third-party AI frameworks (Langchain, LlamaIndex) used
+**Principle I - Modular Architecture**: ✅ PASS
+- Functionality organized as modular components (routes, services, models)
+- Clear separation: API layer (api/index.py), business logic (intent handling), data models (Task entity)
+- Components communicate via function calls and shared data models
+- Single responsibility: intent classification, todo CRUD operations, AI integration separated
 
-**Principle III - Console-First, API-Ready**: ✅ PASS
-- Primary interface is command-line via ChatKit
-- Core agents expose MCP tools/resources (API contract via JSON Schema)
-- Future UI extension possible by swapping ChatKit for web/mobile UI while keeping agent layer unchanged
+**Principle II - AI-Powered Web Stack**: ✅ PASS
+- FastAPI web framework for RESTful APIs
+- OpenAI API (GPT-3.5-turbo) for intent classification and conversational AI
+- HTML/CSS/JavaScript frontend (vanilla, responsive design)
+- RESTful HTTP/JSON communication
 
-**Principle IV - Multimodal & Multilingual Intelligence**: ✅ PASS
-- Text input via ChatKit console
-- Voice input via Whisper API (STT)
-- Voice output via TTS API (user-controlled preference)
-- Language Detection Agent (auto-detect from text/transcribed speech)
-- Translation Agent (bidirectional: user language ↔ English)
+**Principle III - Web-First, API-Ready**: ✅ PASS
+- Primary interface: Web browser via HTML/CSS/JS frontend
+- All functionality exposed through REST API endpoints (`/api/chat`, `/api/todos`)
+- API-ready: Can add mobile app or CLI by consuming same REST endpoints
+- Responsive design for cross-device compatibility
 
-**Principle V - Intent-Driven Todo Management**: ✅ PASS
-- Intent Classification Agent parses natural language to extract operation (Create/Read/Update/Patch/Delete)
-- Graceful handling of ambiguous input (clarifying questions)
-- Sub-agents for each operation: TaskAddAgent, TaskReadAgent, TaskUpdateAgent, TaskPatchAgent, TaskDeleteAgent
+**Principle IV - Multimodal & Multilingual Intelligence (Phased)**: ⚠️ PARTIAL (Phased Implementation)
+- **P0 (MVP - Current)**: ✅ English text input via web forms
+- **P1 (Planned)**: ⚠️ Language detection and translation (not yet implemented)
+- **P2 (Planned)**: ⚠️ Voice input (Web Speech API) - frontend has UI, backend integration pending
+- **Justification**: Phased approach per Constitution v2.0.0 Principle IV - MVP delivers core value, additional modalities added iteratively
 
-**Principle VI - MCP-Based Communication**: ✅ PASS
-- All agent-to-agent calls via MCP tools
-- Task persistence via MCP resource (SQLite database exposed as resource)
-- External services (Whisper, TTS, translation) wrapped as MCP tools
+**Principle V - Intent-Driven Todo Management**: ✅ PASS (Simple Implementation)
+- Natural language parsing using keyword matching + GPT-4 fallback
+- Handles CRUD operations: add task, list tasks, complete task, delete task
+- Graceful handling: AI fallback (`ask_openai`) when keywords don't match
+- User-friendly responses with emojis and confirmations
+
+**Principle VI - RESTful API Communication**: ✅ PASS
+- HTTP methods: GET (`/api/todos`), POST (`/api/chat`)
+- JSON payloads for request/response data
+- Stateless design (no session state in MVP)
+- Standard HTTP status codes (200 OK, error handling)
 
 **Principle VII - Polite, Clear, Helpful Behavior**: ✅ PASS
-- Natural language responses (no error codes exposed to users)
-- Confirmation messages for all operations
-- Clarifying questions when intent unclear
-- User-friendly error messages
+- Natural language responses with emojis (✅ ✓ ○ 🗑️ 📝)
+- Confirmation messages for operations ("✅ Task added: ...", "✅ Completed: ...")
+- User-friendly messages (no technical error codes exposed)
 
-**Principle VIII - Graceful Error Handling**: ✅ PASS
-- Never crash or fail silently
-- Internal error logging (detailed) + user-facing messages (friendly)
-- Fallback to text-only English mode when services unavailable
-- Conversation context maintained across error recovery
+**Principle VIII - Graceful Error Handling**: ⚠️ PARTIAL
+- **Current**: Try/catch blocks in API endpoints, OpenAI API error handling
+- **Missing**: Formal offline fallback, detailed error recovery guidance
+- **Justification**: MVP prioritizes core functionality; production-grade error handling in next phase
 
-**Principle IX - Test-Driven Agent Development**: ✅ PASS
-- Contract tests for all MCP tool/resource schemas
-- Integration tests for multi-agent workflows (e.g., voice input → translation → task add)
-- Unit tests for individual agent logic
-- User scenario tests (Given/When/Then) for all acceptance scenarios in spec
+**Principle IX - Test-Driven Development (Phased)**: ⚠️ MVP Phase (Tests Optional)
+- **Current**: No automated tests (MVP prototype)
+- **Justification**: Constitution v2.0.0 Principle IX allows tests optional for MVP, required for production
+- **Planned**: API contract tests, integration tests for critical user flows before production deployment
 
-**GATE STATUS**: ✅ ALL CHECKS PASS - Proceed to Phase 0 research
+**GATE STATUS**: ✅ MVP REQUIREMENTS PASS - Proceed with phased implementation
+- Core principles satisfied for MVP delivery
+- Partial implementations documented with phase plan
+- Constitution v2.0.0 explicitly allows phased feature rollout
 
 ## Project Structure
 
@@ -114,185 +125,205 @@ Build a console-based AI-powered todo chatbot that accepts natural language comm
 
 ```text
 specs/001-multimodal-todo-chatbot/
-├── plan.md              # This file (/sp.plan command output)
-├── research.md          # Phase 0 output - technology decisions and unknowns resolved
-├── data-model.md        # Phase 1 output - Task, ConversationContext, UserPreferences schemas
-├── quickstart.md        # Phase 1 output - setup, run, test instructions
-├── contracts/           # Phase 1 output - MCP tool/resource JSON schemas
-│   ├── master-chat-agent.json
-│   ├── intent-classifier-agent.json
-│   ├── language-detector-agent.json
-│   ├── translator-agent.json
-│   ├── voice-processor-agent.json
-│   ├── task-add-agent.json
-│   ├── task-read-agent.json
-│   ├── task-update-agent.json
-│   ├── task-patch-agent.json
-│   ├── task-delete-agent.json
-│   └── task-resource.json
-└── tasks.md             # Phase 2 output (/sp.tasks command - NOT created by /sp.plan)
+├── plan.md              # This file (updated for web-first architecture)
+├── spec.md              # Original specification (to be updated for web UI)
+├── tasks.md             # Task list (to be updated to reflect web implementation)
+└── [ADR-0001]           # ../../history/adr/0001-architectural-pivot-*.md
 ```
 
 ### Source Code (repository root)
 
 ```text
+# Web Application Structure (Current Implementation)
+
+api/
+└── index.py             # FastAPI application with REST endpoints
+                         # - /api (health check)
+                         # - /api/todos (GET - list tasks)
+                         # - /api/chat (POST - natural language commands)
+                         # - In-memory storage: todos list
+                         # - OpenAI integration: ask_openai(), handle_message()
+
+index.html               # Frontend - main web UI
+                         # - Voice input UI (Web Speech API integration)
+                         # - Chat interface with message history
+                         # - Language selector (6 languages)
+                         # - Task display and management
+
+styles.css               # Styling - responsive design with animations
+
+script.js                # Frontend logic
+                         # - Chat interaction
+                         # - Voice recognition (Web Speech API)
+                         # - API communication (fetch)
+                         # - Task rendering and actions
+
+vercel.json              # Vercel deployment configuration
+
+requirements.txt         # Python dependencies
+requirements.vercel.txt  # Vercel-specific dependencies (no PyAudio)
+
+# Partial Agent Implementation (src/ - for potential future use)
+
 src/
 ├── agents/
-│   ├── master_chat_agent.py       # Orchestrates workflow, manages conversation context
-│   ├── intent_classifier_agent.py # Classifies user intent (Create/Read/Update/Patch/Delete)
-│   ├── language_detector_agent.py # Detects input language (7+ languages)
-│   ├── translator_agent.py        # Bidirectional translation (user language ↔ English)
-│   ├── voice_processor_agent.py   # STT (Whisper) and TTS coordination
-│   └── task_agents/
-│       ├── task_add_agent.py      # Create new task
-│       ├── task_read_agent.py     # List/search/filter tasks
-│       ├── task_update_agent.py   # Replace entire task
-│       ├── task_patch_agent.py    # Modify specific task fields
-│       └── task_delete_agent.py   # Delete task (with confirmation)
+│   ├── master_chat_agent.py       # Orchestrator (partially implemented)
+│   ├── intent_classifier_agent.py # GPT-4 intent classification
+│   └── task_agents/               # CRUD agents (add, read, update, delete)
 │
 ├── models/
-│   ├── task.py                    # Task entity (ID, description, due_date, priority, status, tags, timestamps)
-│   ├── conversation_context.py   # ConversationContext (recent exchanges, referenced tasks, language, preferences)
-│   └── user_preferences.py        # UserPreferences (language, voice settings, display format)
+│   ├── task.py                    # Task dataclass
+│   ├── conversation_context.py   # Context tracking model
+│   └── user_preferences.py        # User settings model
 │
 ├── services/
-│   ├── task_repository.py         # MCP resource wrapper for SQLite task persistence
-│   ├── whisper_service.py         # MCP tool wrapper for OpenAI Whisper API (STT)
-│   ├── tts_service.py             # MCP tool wrapper for OpenAI TTS API
-│   └── translation_service.py     # MCP tool wrapper for GPT-4 translation
-│
-├── cli/
-│   └── chatbot_cli.py             # ChatKit console interface entry point
+│   ├── task_repository.py         # SQLite repository (for future persistence)
+│   ├── translation_service.py    # Translation API wrapper
+│   └── voice_service.py           # Voice processing service
 │
 └── lib/
-    ├── mcp_helpers.py             # MCP SDK utilities (tool registration, resource exposure)
-    └── logging_config.py          # Internal logging setup (error tracking, debugging)
+    ├── config.py                  # Environment configuration
+    └── logging_config.py          # Logging setup
 
-tests/
-├── contract/
-│   ├── test_mcp_schemas.py        # Validate all MCP tool/resource contracts against JSON Schema
-│   └── test_agent_interfaces.py  # Verify agent input/output conform to contracts
-│
-├── integration/
-│   ├── test_text_workflow.py      # End-to-end text-based task management (P1)
-│   ├── test_multilingual_workflow.py # Multi-language text interaction (P2)
-│   ├── test_voice_workflow.py     # Voice input/output workflow (P3)
-│   ├── test_partial_update_workflow.py # Partial task updates (P4)
-│   └── test_context_awareness_workflow.py # Conversation context (P5)
-│
-└── unit/
-    ├── test_intent_classifier.py  # Unit tests for intent classification logic
-    ├── test_language_detector.py  # Unit tests for language detection
-    ├── test_translator.py         # Unit tests for translation logic
-    └── test_task_agents.py        # Unit tests for each CRUD agent
+# Configuration & Data
 
 config/
-└── .env.example                   # Template for API keys (OPENAI_API_KEY, etc.)
+└── .env.example                   # API key template
 
 data/
-└── tasks.db                       # SQLite database (auto-created on first run)
+└── (planned) tasks.db            # SQLite database (not yet used)
 
-docs/
-├── agent-registry.md              # Documentation of all agents, their MCP contracts, usage
-└── architecture.md                # System architecture diagram and flow explanations
+# Deployment
+
+.github/workflows/                 # (planned) CI/CD pipelines
+vercel.json                        # Vercel serverless configuration
 ```
 
-**Structure Decision**: Single Python project structure chosen because:
-- Console-only application (no separate frontend/backend)
-- All agents run in same process (no distributed services)
-- Modular agent design via `src/agents/` directory keeps concerns separated
-- Testing organized by type (contract/integration/unit) for TDD workflow
+**Structure Decision**:
+- **Current**: Monolithic FastAPI (`api/index.py`) + static frontend (HTML/CSS/JS) deployed on Vercel serverless
+- **Rationale**: Simplest deployment model for MVP; single-file backend easy to iterate
+- **Future**: Can migrate to modular structure (`api/routes/`, `api/services/`) or integrate `src/agents/` layer for advanced features
 
 ## Complexity Tracking
 
-> **No violations detected. Table intentionally left empty.**
+| Issue | Principle Violated | Justification | Mitigation Plan |
+|-------|-------------------|---------------|-----------------|
+| In-memory storage | FR-004 (persistence) | MVP prioritizes fast iteration; persistent storage adds deployment complexity | **P1**: Migrate to SQLite (task_repository.py already exists in src/) |
+| No delete confirmation | FR-007 (user confirmation) | Current UI directly deletes tasks; acceptable for MVP with small task counts | **P1**: Add confirmation dialog in frontend (modal or inline prompt) |
+| No language auto-detect | FR-008 (language detection) | Language selector (manual choice) sufficient for MVP; auto-detect requires backend integration | **P1**: Implement Language Detection Agent or use OpenAI API for detection |
+| No translation | FR-009 (multilingual) | UI has language selector but no actual translation; English-only for MVP | **P1**: Integrate Translation Agent or OpenAI API for bidirectional translation |
+| Stateless API | FR-014 (conversation context) | HTTP stateless by default; context tracking requires session management | **P1**: Add session middleware or use browser localStorage for context |
+| Keyword matching | Principle V (intent-driven) | Current: keyword matching (`if "add" in msg`) with GPT fallback; less sophisticated than dedicated intent classifier | **Acceptable**: Works for MVP; **P1** can upgrade to dedicated Intent Classifier Agent if needed |
 
-All constitutional principles satisfied with no justified exceptions.
-
----
-
-## Phase 0: Research & Unknown Resolution
-
-**NEXT STEPS**: The `/sp.plan` command will now proceed to Phase 0 research to resolve the following unknowns and create `research.md`:
-
-### Research Tasks
-
-1. **OpenAI Agents SDK Integration**
-   - Investigate: How to structure agent lifecycle with OpenAI Agents SDK
-   - Investigate: Agent orchestration patterns (Master agent calling sub-agents)
-   - Investigate: Error handling and timeout configuration in agent workflows
-
-2. **MCP SDK Implementation**
-   - Investigate: MCP tool registration patterns for external APIs (Whisper, TTS)
-   - Investigate: MCP resource patterns for SQLite database access
-   - Investigate: Inter-agent communication via MCP (agent-to-agent tool calling)
-
-3. **OpenAI ChatKit Console UI**
-   - Investigate: ChatKit setup for terminal-based conversational interface
-   - Investigate: User input handling (text vs. voice mode toggle)
-   - Investigate: Conversation history management in ChatKit
-
-4. **Voice Processing Best Practices**
-   - Investigate: Whisper API latency optimization techniques
-   - Investigate: Audio input handling in console environment (microphone access via Python)
-   - Investigate: TTS output delivery (play audio in terminal or save to file)
-
-5. **Language Detection & Translation**
-   - Investigate: GPT-4 prompt engineering for reliable language detection
-   - Investigate: Translation accuracy strategies (bidirectional consistency checks)
-   - Investigate: Supported language set (confirm 7+ languages feasible)
-
-6. **SQLite as MCP Resource**
-   - Investigate: Best practices for exposing SQLite via MCP resource protocol
-   - Investigate: Schema migration strategy for future updates
-   - Investigate: Concurrent access handling (if needed for multi-agent scenarios)
-
-7. **Testing Strategy for AI Agents**
-   - Investigate: Contract testing frameworks for MCP schemas (JSON Schema validation)
-   - Investigate: Integration testing patterns for multi-agent workflows
-   - Investigate: Mocking strategies for OpenAI API calls (avoid costs in tests)
-
-**Output**: `research.md` will document decisions, rationale, and alternatives for each research task above.
+**Constitutional Compliance**: All deviations are explicitly allowed under Constitution v2.0.0 phased implementation approach. MVP delivers core value; production features added iteratively.
 
 ---
 
-## Phase 1: Design & Contracts
+## Implementation Phases
 
-**Prerequisites**: `research.md` complete
+### Phase 0: MVP (Current Status - Deployed on Vercel)
 
-### Deliverables
+**Delivered:**
+- ✅ Web UI with chat interface
+- ✅ Basic todo CRUD operations (add, list, complete, delete)
+- ✅ Natural language intent understanding (keyword + GPT fallback)
+- ✅ OpenAI API integration for conversational AI
+- ✅ Responsive frontend with voice UI elements
+- ✅ Vercel serverless deployment
 
-1. **data-model.md**: Entity schemas
-   - Task: ID, description, due_date, priority, status, tags, created_at, updated_at
-   - ConversationContext: exchanges, referenced_tasks, language, voice_preferences
-   - UserPreferences: language, voice_input_enabled, voice_output_enabled, display_format
-
-2. **contracts/**: MCP tool/resource JSON schemas
-   - All agent tool contracts (input/output schemas)
-   - Task resource contract (SQLite access via MCP)
-
-3. **quickstart.md**: Setup and run instructions
-   - Environment setup (Python 3.11+, dependencies)
-   - API key configuration (.env file)
-   - First run and sample commands
-
-4. **Agent context update**: Run `.specify/scripts/bash/update-agent-context.sh claude` to update agent-specific context file with new technologies from this plan
-
-**STOP POINT**: Phase 1 design artifacts completed. Phase 2 (tasks.md generation via `/sp.tasks`) will be executed separately.
+**Limitations:**
+- In-memory storage (tasks lost on restart)
+- No delete confirmation
+- English-only (no translation despite language selector)
+- No conversation context tracking
+- No persistent voice transcription backend
 
 ---
 
-## Key Architectural Decisions (Summary)
+### Phase 1: Production-Ready Features (Planned)
 
-**To be detailed in research.md after Phase 0:**
+**Goals:**
+1. **Data Persistence** (FR-004)
+   - Migrate from in-memory to SQLite
+   - Use existing `task_repository.py` from `src/services/`
+   - Update `/api/todos` and `/api/chat` to use repository
 
-1. **Agent Orchestration**: Master Chat Agent coordinates all sub-agents via MCP tool calls
-2. **Language Processing Flow**: User Input → Language Detector → Translator (if needed) → Intent Classifier → Task Agent → Translator (response) → Output
-3. **Voice Processing Flow**: Audio Input → Whisper STT → [same as text flow] → TTS (if enabled) → Audio Output
-4. **State Management**: Conversation context maintained by Master Chat Agent, task data in SQLite via MCP resource
-5. **Error Handling**: Layered approach (agent-level errors → Master Chat → user-friendly messages + recovery options)
-6. **Testing Strategy**: Contract-first (MCP schemas validated), integration tests for workflows, unit tests for agent logic
+2. **Delete Confirmation** (FR-007)
+   - Add confirmation modal/dialog in frontend
+   - Update delete logic to require user confirmation
+
+3. **Multilingual Support** (FR-008, FR-009)
+   - Implement language detection (OpenAI API or dedicated agent)
+   - Add translation service (OpenAI API GPT-4 for bidirectional translation)
+   - Update `/api/chat` to detect language → translate → process → translate response
+
+4. **Conversation Context** (FR-014)
+   - Add session management (server-side sessions or client-side localStorage)
+   - Track last 5 exchanges per user
+   - Enable implicit references ("delete it" after viewing task)
+
+5. **Testing Infrastructure**
+   - API contract tests (pytest)
+   - Integration tests for critical user flows
+   - Automated testing in CI/CD pipeline
 
 ---
 
-**COMPLETION STATUS**: Plan structure complete. Ready for Phase 0 research execution.
+### Phase 2: Voice & Advanced Features (Future)
+
+**Goals:**
+1. **Voice Input Backend**
+   - Integrate OpenAI Whisper API for speech-to-text
+   - Connect frontend Web Speech API to backend processing
+
+2. **Voice Output**
+   - OpenAI TTS API for text-to-speech responses
+   - User preference toggle for voice output
+
+3. **Task Filtering & Search** (FR-017)
+   - Filter by priority, status, due date
+   - Search by description keywords
+
+4. **Partial Task Updates** (FR-006)
+   - PATCH endpoint for field-specific updates
+   - Update only specified fields (priority, due date, etc.)
+
+---
+
+## Key Architectural Decisions
+
+**See [ADR-0001](../../history/adr/0001-architectural-pivot-from-console-first-to-web-first-deployment.md) for detailed rationale.**
+
+1. **Web-First Deployment**: Browser-based UI instead of console CLI for universal accessibility
+2. **FastAPI Monolith**: Single `api/index.py` file for MVP simplicity vs. agent-based microservices
+3. **RESTful HTTP/JSON**: Standard web communication instead of MCP protocol
+4. **Phased Implementation**: MVP → Production → Advanced features instead of all-at-once delivery
+5. **Vercel Serverless**: Cloud hosting with automatic scaling instead of local executable distribution
+6. **In-Memory MVP Storage**: Fast iteration over persistent storage for initial deployment
+
+---
+
+## Success Criteria (Updated for Web Implementation)
+
+**MVP (Phase 0)** - ✅ ACHIEVED:
+- Users can add, view, complete, and delete tasks via web browser
+- Natural language commands work with reasonable accuracy
+- Deployed and accessible via public URL (Vercel)
+- Responsive UI works on desktop and mobile browsers
+
+**Production (Phase 1)** - Targets:
+- 100% task persistence across app restarts (SQLite)
+- 90% language detection accuracy for 7+ languages
+- Conversation context enables follow-up commands
+- Delete confirmation prevents accidental data loss
+- API contract tests cover all critical endpoints
+
+**Advanced (Phase 2)** - Targets:
+- 85% voice transcription accuracy (Whisper API)
+- Voice input/output fully functional
+- Task filtering and search work seamlessly
+- <2s response time for text, <4s for voice
+
+---
+
+**COMPLETION STATUS**: Plan updated to reflect web-first architecture per Constitution v2.0.0 and ADR-0001. Phase 0 (MVP) deployed; Phase 1 (production features) ready for implementation.

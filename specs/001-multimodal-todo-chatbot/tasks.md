@@ -1,11 +1,20 @@
 # Tasks: AI-Powered Multilingual Voice-Enabled Todo Chatbot
 
 **Input**: Design documents from `/specs/001-multimodal-todo-chatbot/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
+**Prerequisites**: plan.md (updated for web-first), spec.md (updated for web UI), ADR-0001
+**Updated**: 2025-12-21 (Reflects architectural pivot from console to web)
 
-**Tests**: Tests are OPTIONAL per project guidelines. This implementation does NOT include test tasks as they were not explicitly requested in the feature specification.
+**⚠️ IMPORTANT - ARCHITECTURAL PIVOT**: This task list was originally created for a console-first, agent-based architecture. The implementation pivoted to a web-first FastAPI architecture (see [ADR-0001](../../history/adr/0001-architectural-pivot-from-console-first-to-web-first-deployment.md)). The tasks below are preserved for historical reference, but many have been superseded by the web implementation.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Current Implementation Status**:
+- ✅ **MVP Deployed**: Web-based todo chatbot with basic CRUD operations (see `api/index.py`, `index.html`, `script.js`, `styles.css`)
+- ✅ **Phase 0 Complete**: English text-based task management via web browser
+- ⚠️ **Phase 1 Pending**: SQLite persistence, delete confirmation, multilingual support, conversation context
+- ⚠️ **Phase 2 Pending**: Voice backend integration, advanced features
+
+**Tests**: Tests are OPTIONAL per project guidelines (Constitution v2.0.0 Principle IX - MVP phase). Production deployment will require API contract tests and integration tests.
+
+**Organization**: Tasks below are grouped by original user story plan. See [plan.md](./plan.md) for updated phased implementation approach.
 
 ## Format: `[ID] [P?] [Story] Description`
 
