@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(python run_server.py:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(web\\): enhance UI with professional design and implement voice chatbot\n\n- Add professional-grade UI with gradient backgrounds and glass-morphism effects\n- Implement fully functional Web Speech API voice recognition with visual feedback\n- Add animated voice visualizer with wave bars when listening\n- Enhance chat interface with message bubbles, avatars, and timestamps\n- Add comprehensive error handling for voice recognition\n- Include PyAudio dependency for microphone support\n- Add task action buttons \\(complete, edit, delete\\) for each todo item\n- Implement quick action buttons for common operations\n- Add multilingual voice support \\(English, Urdu, Hindi, Spanish, French, Arabic\\)\n- Improve responsive design with modern animations and transitions\n- Add task counter and real-time status indicators\n- Update color scheme with professional gradients and shadows\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nchore: add GitHub Pages deployment workflow\n\n- Add GitHub Actions workflow for automatic deployment to GitHub Pages\n- Configure workflow to deploy on push to main branches\n- Set up proper permissions for Pages deployment\n- Enable manual workflow dispatch\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(start chrome:*)",
+      "Bash(ping:*)",
+      "Bash(dir:*)",
+      "Bash(bash:*)",
+      "Skill(sp.constitution)",
+      "Skill(sp.adr)",
+      "Bash(python:*)"
+    ]
+  }
+}

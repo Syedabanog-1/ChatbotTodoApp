@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     # Import the app from the module
     try:
-        from src.cli.chatbot_cli import app
+        from api.index import app
         uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=False)
     except Exception as e:
         print(f"Failed to start server: {e}")
