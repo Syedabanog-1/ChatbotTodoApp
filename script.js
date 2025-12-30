@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Quick action buttons
     const addTaskBtn = document.getElementById('add-task-btn');
     const showTasksBtn = document.getElementById('show-tasks-btn');
+    const readTasksBtn = document.getElementById('read-tasks-btn');
     const clearCompletedBtn = document.getElementById('clear-completed-btn');
 
     // Configuration
@@ -35,6 +36,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Voice Recognition Setup
     let recognition = null;
     let isListening = false;
+    let usedVoiceInput = false;  // Track if user used voice for last request
+
+    // Text-to-Speech Setup
+    let speechSynthesis = window.speechSynthesis;
+    let isSpeaking = false;
 
     // Initialize Speech Recognition
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -63,6 +69,9 @@ document.addEventListener('DOMContentLoaded', function() {
             voiceStatus.textContent = `✓ Heard: "${transcript}"`;
             voiceStatus.style.color = '#10b981';
 
+            // Mark that voice input was used
+            usedVoiceInput = true;
+
             // Auto-send after 1 second
             setTimeout(() => {
                 sendMessage();
@@ -84,7 +93,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorMessage = 'Microphone permission denied.';
                     break;
                 case 'network':
-                    errorMessage = 'Network error occurred.';
+                    errorMessage = 'Network error. Check your internet connection and try again.';
+                    console.warn('⚠️ Voice recognition network error. Possible causes:\n- No internet connection\n- Google Speech API unreachable\n- Firewall/proxy blocking access');
                     break;
                 default:
                     errorMessage = `Error: ${event.error}`;
@@ -118,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('⚠️ Web Speech API not supported in this browser');
     }
 
-    // Voice Button Click Handler
+    // Voice Button Click Handler (Enhanced with connection check)
     voiceBtn.addEventListener('click', function() {
         if (!recognition) {
             alert('⚠️ Voice recognition is not supported in your browser.\n\nPlease use:\n- Google Chrome\n- Microsoft Edge\n- Safari');
@@ -131,6 +141,14 @@ document.addEventListener('DOMContentLoaded', function() {
             voiceStatus.textContent = 'Voice input cancelled';
             voiceStatus.style.color = '#6b7280';
         } else {
+            // Check internet connection before starting voice input
+            if (!navigator.onLine) {
+                voiceStatus.textContent = '❌ No internet connection. Voice input requires internet.';
+                voiceStatus.style.color = '#ef4444';
+                alert('⚠️ Voice Input Requires Internet\n\nVoice recognition needs an active internet connection to work.\n\nPlease check your connection and try again.');
+                return;
+            }
+
             // Start listening
             try {
                 const lang = LANGUAGE_CODES[languageSelect.value] || 'en-US';
@@ -139,11 +157,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`🎤 Starting recognition in ${lang}`);
             } catch (error) {
                 console.error('Error starting recognition:', error);
-                voiceStatus.textContent = 'Failed to start voice input';
+                voiceStatus.textContent = '❌ Failed to start voice input';
                 voiceStatus.style.color = '#ef4444';
             }
         }
     });
+
+    // Text-to-Speech Function
+    function speakText(text, lang = 'en') {
+        if (!speechSynthesis) {
+            console.warn('Speech synthesis not supported');
+            return;
+        }
+
+        // Stop any ongoing speech
+        if (isSpeaking) {
+            speechSynthesis.cancel();
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+
+        // Map language codes to speech synthesis voices
+        const langMap = {
+            'en': 'en-US',
+            'ur': 'ur-PK',
+            'hi': 'hi-IN',
+            'es': 'es-ES',
+            'fr': 'fr-FR',
+            'ar': 'ar-SA'
+        };
+
+        utterance.lang = langMap[lang] || 'en-US';
+        utterance.rate = 0.9;  // Slightly slower for better clarity
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        utterance.onstart = function() {
+            isSpeaking = true;
+            voiceStatus.textContent = '🔊 Speaking...';
+            voiceStatus.style.color = '#3b82f6';
+        };
+
+        utterance.onend = function() {
+            isSpeaking = false;
+            voiceStatus.textContent = '✓ Done speaking';
+            voiceStatus.style.color = '#10b981';
+            setTimeout(() => { voiceStatus.textContent = ''; }, 2000);
+        };
+
+        utterance.onerror = function(event) {
+            isSpeaking = false;
+            console.error('Speech synthesis error:', event);
+        };
+
+        speechSynthesis.speak(utterance);
+    }
 
     // Utility Functions
     function getCurrentTime() {
@@ -321,6 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show bot response
                 if (data.response) {
                     addMessage(data.response, false);
+
+                    // Auto-speak response if voice input was used (simplified)
+                    if (usedVoiceInput) {
+                        console.log('🔊 Voice input detected - speaking response:', data.response.substring(0, 50));
+                        speakText(data.response, selectedLang);
+                    }
                 }
 
                 // Update todo list
@@ -328,6 +402,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateTodoList(data.todos);
                     updateTaskCount(data.todos.length);
                 }
+
+                // Reset voice input flag
+                usedVoiceInput = false;
             } else {
                 addMessage('Sorry, there was an error processing your request.', false);
             }
@@ -349,13 +426,36 @@ document.addEventListener('DOMContentLoaded', function() {
         sendMessage('Show all my tasks');
     });
 
+    readTasksBtn.addEventListener('click', async function() {
+        const taskTexts = document.querySelectorAll('.task-text');
+        const selectedLang = languageSelect.value;
+
+        if (taskTexts.length === 0 || (taskTexts.length === 1 && taskTexts[0].closest('.empty-state'))) {
+            speakText('No tasks available', selectedLang);
+            return;
+        }
+
+        // Build task list text for speaking
+        let tasksToRead = `You have ${taskTexts.length} task${taskTexts.length !== 1 ? 's' : ''}. `;
+
+        Array.from(taskTexts).forEach((taskText, index) => {
+            if (!taskText.closest('.empty-state')) {
+                const isCompleted = taskText.closest('li').classList.contains('completed');
+                const statusText = isCompleted ? 'completed' : 'pending';
+                tasksToRead += `Task ${index + 1}: ${taskText.textContent}, status ${statusText}. `;
+            }
+        });
+
+        speakText(tasksToRead, selectedLang);
+    });
+
     clearCompletedBtn.addEventListener('click', function() {
         if (confirm('Delete all completed tasks?')) {
             sendMessage('Delete all completed tasks');
         }
     });
 
-    // Translation Function
+    // Translation Function (Backend Batch Translation - FAST!)
     translateBtn.addEventListener('click', async function() {
         const targetLang = languageSelect.value;
         if (targetLang === 'en') {
@@ -373,6 +473,10 @@ document.addEventListener('DOMContentLoaded', function() {
         translateBtn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Translating...</span>';
 
         try {
+            // Collect all task texts
+            const taskElements = [];
+            const originalTexts = [];
+
             for (let taskText of taskTexts) {
                 if (taskText.closest('.empty-state')) continue;
 
@@ -382,30 +486,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     taskText.setAttribute('data-original', originalText);
                 }
 
-                const response = await fetch(`${BACKEND_URL}/api/chat`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: `Translate to ${getLanguageName(targetLang)}: ${originalText}`,
-                        language: targetLang
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.response) {
-                        taskText.textContent = data.response.replace(/^(Translated:|Translation:)/i, '').trim();
-                    }
-                }
+                taskElements.push(taskText);
+                originalTexts.push(originalText);
             }
 
-            voiceStatus.textContent = '✓ Translation completed!';
-            voiceStatus.style.color = '#10b981';
-            setTimeout(() => { voiceStatus.textContent = ''; }, 3000);
+            console.log(`⚡ Batch translating ${originalTexts.length} tasks in ONE API call...`);
+            const startTime = Date.now();
+
+            // Call batch translation endpoint (ONE API call for ALL tasks)
+            const response = await fetch(`${BACKEND_URL}/api/translate-batch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tasks: originalTexts,
+                    target_language: targetLang
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                console.log(`✅ Batch translation completed in ${elapsed}s`);
+
+                // Apply translations to UI
+                if (data.translations && data.translations.length === taskElements.length) {
+                    data.translations.forEach((translation, index) => {
+                        taskElements[index].textContent = translation;
+                    });
+
+                    voiceStatus.textContent = `✓ Translated ${data.count} tasks in ${elapsed}s!`;
+                    voiceStatus.style.color = '#10b981';
+                    setTimeout(() => { voiceStatus.textContent = ''; }, 3000);
+                } else {
+                    throw new Error('Translation count mismatch');
+                }
+            } else {
+                throw new Error('Batch translation request failed');
+            }
         } catch (error) {
             console.error('Translation error:', error);
+            voiceStatus.textContent = '❌ Translation failed';
+            voiceStatus.style.color = '#ef4444';
             alert('Translation failed. Please try again.');
         } finally {
             translateBtn.disabled = false;

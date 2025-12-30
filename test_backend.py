@@ -1,4 +1,9 @@
 """
+DEPRECATED: This test file is for the old CLI backend.
+
+For current API testing, use: tests/test_api_integration.py
+
+This file is kept for reference only.
 Test script to verify backend API functionality before deployment
 """
 import asyncio

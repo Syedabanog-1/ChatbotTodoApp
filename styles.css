@@ -639,6 +639,11 @@ body {
     color: white;
 }
 
+.action-btn.info {
+    background: linear-gradient(135deg, var(--secondary), #7c3aed);
+    color: white;
+}
+
 .action-btn:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
