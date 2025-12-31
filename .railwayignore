@@ -1,0 +1,9 @@
+# Local development files - not needed for Railway deployment
+run_server_local.py
+test_*.py
+tests/
+*.md
+.git/
+.env.example
+requirements-dev.txt
+requirements.full.txt
