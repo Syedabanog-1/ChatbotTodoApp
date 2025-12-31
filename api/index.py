@@ -55,7 +55,17 @@ app.add_middleware(
 # Database Initialization
 # =========================
 # Initialize TaskRepository with SQLite database
-db_path = Path(__file__).parent.parent / "data" / "tasks.db"
+# Use /tmp in production (Railway) for writable filesystem
+import platform
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    # Railway production environment - use /tmp
+    db_path = Path("/tmp/tasks.db")
+    logger.info(f"Using Railway production database path: {db_path}")
+else:
+    # Local development
+    db_path = Path(__file__).parent.parent / "data" / "tasks.db"
+    logger.info(f"Using local development database path: {db_path}")
+
 task_repo = TaskRepository(str(db_path))
 
 # =========================
