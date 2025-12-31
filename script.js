@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearCompletedBtn = document.getElementById('clear-completed-btn');
 
     // Configuration
-    const BACKEND_URL = window.location.origin;
+    const BACKEND_URL = 'https://chatbottodoapp-production.up.railway.app';
     const LANGUAGE_CODES = {
         'en': 'en-US',
         'ur': 'ur-PK',
