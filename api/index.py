@@ -388,6 +388,20 @@ def handle_message(message: str, language: str = "en"):
 # API ROUTES
 # =========================
 
+@app.get("/")
+async def root():
+    """Simple health check endpoint - no database needed."""
+    return {
+        "status": "ok",
+        "service": "AI Todo Chatbot",
+        "message": "Server is running"
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway."""
+    return {"status": "healthy"}
+
 @app.get("/api")
 async def api_root():
     task_count = len(get_task_repo().get_all())
@@ -523,26 +537,6 @@ async def translate_batch(req: BatchTranslateRequest):
             "count": len(req.tasks),
             "error": str(e)
         }
-
-# =========================
-# Frontend Serving
-# =========================
-@app.get("/")
-async def serve_frontend():
-    index_file = Path(__file__).parent.parent / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return {"message": "Frontend not found. API is running."}
-
-# =========================
-# Static files
-# =========================
-@app.get("/{file_path:path}")
-async def static_files(file_path: str):
-    file = Path(__file__).parent.parent / file_path
-    if file.exists():
-        return FileResponse(file)
-    return {"error": "File not found"}
 
 # =========================
 # Vercel export
