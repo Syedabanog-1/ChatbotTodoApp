@@ -390,12 +390,39 @@ def handle_message(message: str, language: str = "en"):
 
 @app.get("/")
 async def root():
-    """Simple health check endpoint - no database needed."""
+    """Serve the frontend HTML page."""
+    html_path = Path(__file__).parent.parent / "index.html"
+    if html_path.exists():
+        return FileResponse(html_path)
     return {
         "status": "ok",
         "service": "AI Todo Chatbot",
         "message": "Server is running"
     }
+
+@app.get("/styles.css")
+async def serve_styles():
+    """Serve the CSS file."""
+    css_path = Path(__file__).parent.parent / "styles.css"
+    if css_path.exists():
+        return FileResponse(css_path, media_type="text/css")
+    return {"error": "CSS not found"}
+
+@app.get("/script.js")
+async def serve_script():
+    """Serve the JavaScript file with no-cache headers."""
+    js_path = Path(__file__).parent.parent / "script.js"
+    if js_path.exists():
+        return FileResponse(
+            js_path,
+            media_type="application/javascript",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+    return {"error": "JS not found"}
 
 @app.get("/health")
 async def health_check():

@@ -120,6 +120,8 @@ The system maintains conversation context across multiple exchanges, allowing us
 
 - **What happens when user rapidly issues multiple commands in voice mode?** System should queue commands and process them sequentially, providing feedback for each.
 
+- **What happens when the backend server is unreachable?** (network error, server down) - System displays a clear error message "Could not connect to server" with a retry button, and keeps existing tasks visible in read-only mode (no add/edit/delete until connection restored).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -144,6 +146,8 @@ The system maintains conversation context across multiple exchanges, allowing us
 - **FR-018**: System MUST handle multi-turn conversations where users provide information incrementally (e.g., "Add a task" → "What task?" → "Buy groceries")
 - **FR-019**: System MUST validate task operations (e.g., cannot delete a non-existent task, cannot update task with invalid priority)
 - **FR-020**: System MUST provide immediate feedback for every user command (confirmation, error, or clarifying question)
+- **FR-021**: System MUST auto-detect deployment environment (local development vs production) and configure backend API URL accordingly based on hostname
+- **FR-022**: System MUST display clear error messages with retry functionality when backend server is unreachable, and keep existing tasks visible in read-only mode until connection is restored
 
 ### Key Entities
 
@@ -219,3 +223,10 @@ The following are explicitly excluded from this feature:
 13. **Notifications**: No push notifications or reminders (user must check tasks manually in web UI)
 14. **Analytics**: No task completion statistics or productivity reports
 15. **Export/Import**: No bulk export to CSV/JSON or import from other todo apps
+
+## Clarifications
+
+### Session 2026-01-03
+
+- Q: What is the intended deployment environment for your chatbot application? → A: Dual mode - Auto-detect environment (local vs production) based on hostname
+- Q: When the backend server is unreachable (network error, server down), what should the chatbot do? → A: Show clear error message with retry button and keep existing tasks visible (read-only mode)

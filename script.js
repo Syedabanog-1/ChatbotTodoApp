@@ -22,8 +22,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const readTasksBtn = document.getElementById('read-tasks-btn');
     const clearCompletedBtn = document.getElementById('clear-completed-btn');
 
-    // Configuration
-    const BACKEND_URL = 'https://chatbottodoapp-production.up.railway.app';
+    // Configuration - Auto-detect environment (FR-021)
+    const BACKEND_URL = (function() {
+        // If on localhost, use local backend
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:8000';
+        }
+        // Otherwise use Railway production URL
+        return 'https://chatbottodoapp-production.up.railway.app';
+    })();
+
+    console.log(`🌐 Backend URL: ${BACKEND_URL}`);
+
     const LANGUAGE_CODES = {
         'en': 'en-US',
         'ur': 'ur-PK',
@@ -267,9 +277,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const todos = await response.json();
                 updateTodoList(todos);
                 updateTaskCount(todos.length);
+            } else {
+                // Server error - keep existing UI as is (FR-022: read-only mode)
+                console.warn(`Server returned ${response.status} - keeping existing tasks visible`);
             }
         } catch (error) {
-            console.error('Error fetching todos:', error);
+            // Network error - keep existing UI as is (FR-022: read-only mode)
+            console.error('Error fetching todos (keeping existing display):', error);
         }
     }
 
@@ -406,12 +420,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Reset voice input flag
                 usedVoiceInput = false;
             } else {
-                addMessage('Sorry, there was an error processing your request.', false);
+                // Server responded but with error status (FR-022)
+                const errorMsg = `❌ Server error (${response.status}). Please try again.`;
+                addMessage(errorMsg, false);
+                showRetryButton(message, selectedLang);
             }
         } catch (error) {
+            // Network error - cannot reach server (FR-022)
             console.error('Error sending message:', error);
-            addMessage('Sorry, could not connect to the server. Please check your connection.', false);
+            const errorMsg = '❌ Could not connect to server. Please check your connection and try again.';
+            addMessage(errorMsg, false);
+            showRetryButton(message, selectedLang);
         }
+    }
+
+    // Retry Button for Failed Requests (FR-022)
+    function showRetryButton(originalMessage, originalLang) {
+        const retryDiv = document.createElement('div');
+        retryDiv.className = 'retry-container';
+        retryDiv.style.cssText = 'text-align: center; margin: 10px 0;';
+
+        const retryBtn = document.createElement('button');
+        retryBtn.textContent = '🔄 Retry';
+        retryBtn.className = 'retry-btn';
+        retryBtn.style.cssText = 'padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;';
+
+        retryBtn.onclick = function() {
+            retryDiv.remove();
+            // Retry the original message
+            sendMessage(originalMessage, false);
+        };
+
+        retryDiv.appendChild(retryBtn);
+        chatHistory.appendChild(retryDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
     }
 
     // Quick Actions
