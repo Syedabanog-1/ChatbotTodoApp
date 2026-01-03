@@ -59,10 +59,16 @@ async def startup_event():
 
     # Initialize database
     try:
+        # Ensure /tmp directory exists if on Railway
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            os.makedirs("/tmp", exist_ok=True)
+            logger.info("✓ /tmp directory ready for Railway")
+
         get_task_repo()
         logger.info("✓ Database initialized successfully")
     except Exception as e:
         logger.error(f"✗ Database initialization failed: {e}")
+        logger.exception(e)  # Log full stack trace
 
     logger.info("=" * 50)
 
@@ -463,7 +469,26 @@ async def serve_script():
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Railway."""
-    return {"status": "healthy"}
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway" if os.getenv("RAILWAY_ENVIRONMENT") else "local"
+    }
+
+    # Check database without failing health check
+    try:
+        task_count = len(get_task_repo().get_all())
+        health_status["database"] = "connected"
+        health_status["tasks_count"] = task_count
+    except Exception as e:
+        logger.warning(f"Database check failed in health endpoint: {e}")
+        health_status["database"] = "unavailable"
+        health_status["database_error"] = str(e)
+
+    # Check API key without exposing it
+    health_status["openai_configured"] = bool(os.getenv("OPENAI_API_KEY"))
+
+    return health_status
 
 @app.get("/api")
 async def api_root():
