@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
         print("\nImporting FastAPI app...")
         from api.index import app
-        print("✓ FastAPI app imported successfully")
+        print("[OK] FastAPI app imported successfully")
 
         print(f"\nStarting uvicorn server on 0.0.0.0:{port}...")
         print("=" * 50)

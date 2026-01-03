@@ -40,15 +40,51 @@ app = FastAPI(
     description="Serverless AI-powered Todo Chatbot with SQLite Persistence, Multilingual Support, and Conversation Context"
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Log startup information and validate configuration."""
+    logger.info("=" * 50)
+    logger.info("AI TODO CHATBOT API STARTING")
+    logger.info("=" * 50)
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Railway environment: {os.getenv('RAILWAY_ENVIRONMENT', 'Not set')}")
+
+    # Check for API key
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        logger.info(f"✓ OPENAI_API_KEY is set (length: {len(api_key)})")
+    else:
+        logger.error("✗ OPENAI_API_KEY is NOT set - AI features will not work!")
+
+    # Initialize database
+    try:
+        get_task_repo()
+        logger.info("✓ Database initialized successfully")
+    except Exception as e:
+        logger.error(f"✗ Database initialization failed: {e}")
+
+    logger.info("=" * 50)
+
 # =========================
 # CORS
 # =========================
+# Allow Vercel frontend and localhost for development
+ALLOWED_ORIGINS = [
+    "https://chatbot-todo-app.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "*"  # Fallback for development
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # =========================
