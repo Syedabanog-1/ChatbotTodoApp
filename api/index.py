@@ -74,20 +74,12 @@ async def startup_event():
     else:
         logger.error("✗ OPENAI_API_KEY is NOT set - AI features will not work!")
 
-    # Initialize database (non-blocking - don't fail startup if DB fails)
-    try:
-        # Ensure /tmp directory exists if on Railway
-        if on_railway:
-            os.makedirs("/tmp", exist_ok=True)
-            logger.info("✓ /tmp directory ready for Railway")
+    # Ensure /tmp directory exists if on Railway (but DON'T initialize DB during startup)
+    if on_railway:
+        os.makedirs("/tmp", exist_ok=True)
+        logger.info("✓ /tmp directory ready for Railway")
 
-        get_task_repo()
-        logger.info("✓ Database initialized successfully")
-    except Exception as e:
-        logger.error(f"✗ Database initialization failed: {e}")
-        logger.exception(e)  # Log full stack trace
-        logger.warning("⚠️ Server will start anyway - database will retry on first request")
-
+    logger.info("⚠️ Database will be initialized on first request (lazy loading)")
     logger.info("=" * 50)
     logger.info("SERVER STARTUP COMPLETE - READY TO ACCEPT REQUESTS")
     logger.info("=" * 50)
