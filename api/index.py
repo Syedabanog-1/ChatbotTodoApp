@@ -32,6 +32,18 @@ from src.models.task import Task
 from src.services.task_repository import TaskRepository
 
 # =========================
+# Helper Functions
+# =========================
+def is_railway() -> bool:
+    """Detect if running on Railway platform."""
+    return any([
+        os.getenv("RAILWAY_ENVIRONMENT"),
+        os.getenv("RAILWAY_ENVIRONMENT_NAME"),
+        os.getenv("RAILWAY_PROJECT_ID"),
+        os.getenv("RAILWAY_SERVICE_NAME")
+    ])
+
+# =========================
 # App Initialization
 # =========================
 app = FastAPI(
@@ -48,7 +60,12 @@ async def startup_event():
     logger.info("=" * 50)
     logger.info(f"Python version: {sys.version}")
     logger.info(f"Working directory: {os.getcwd()}")
-    logger.info(f"Railway environment: {os.getenv('RAILWAY_ENVIRONMENT', 'Not set')}")
+
+    # Detect Railway environment
+    on_railway = is_railway()
+    logger.info(f"Railway detected: {on_railway}")
+    if on_railway:
+        logger.info(f"Railway service: {os.getenv('RAILWAY_SERVICE_NAME', 'unknown')}")
 
     # Check for API key
     api_key = os.getenv("OPENAI_API_KEY")
@@ -60,7 +77,7 @@ async def startup_event():
     # Initialize database
     try:
         # Ensure /tmp directory exists if on Railway
-        if os.getenv("RAILWAY_ENVIRONMENT"):
+        if on_railway:
             os.makedirs("/tmp", exist_ok=True)
             logger.info("✓ /tmp directory ready for Railway")
 
@@ -104,10 +121,10 @@ def get_task_repo():
     if task_repo is None:
         try:
             # Use /tmp in production (Railway) for writable filesystem
-            if os.getenv("RAILWAY_ENVIRONMENT"):
+            if is_railway():
                 # Railway production environment - use /tmp
                 db_path = Path("/tmp/tasks.db")
-                logger.info(f"Using Railway production database path: {db_path}")
+                logger.info(f"✓ Railway detected - using database path: {db_path}")
             else:
                 # Local development
                 db_path = Path(__file__).parent.parent / "data" / "tasks.db"
@@ -472,7 +489,7 @@ async def health_check():
     health_status = {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "environment": "railway" if os.getenv("RAILWAY_ENVIRONMENT") else "local"
+        "environment": "railway" if is_railway() else "local"
     }
 
     # Check database without failing health check
