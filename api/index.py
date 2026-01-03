@@ -74,7 +74,7 @@ async def startup_event():
     else:
         logger.error("✗ OPENAI_API_KEY is NOT set - AI features will not work!")
 
-    # Initialize database
+    # Initialize database (non-blocking - don't fail startup if DB fails)
     try:
         # Ensure /tmp directory exists if on Railway
         if on_railway:
@@ -86,7 +86,10 @@ async def startup_event():
     except Exception as e:
         logger.error(f"✗ Database initialization failed: {e}")
         logger.exception(e)  # Log full stack trace
+        logger.warning("⚠️ Server will start anyway - database will retry on first request")
 
+    logger.info("=" * 50)
+    logger.info("SERVER STARTUP COMPLETE - READY TO ACCEPT REQUESTS")
     logger.info("=" * 50)
 
 # =========================
@@ -449,14 +452,19 @@ def handle_message(message: str, language: str = "en"):
 
 @app.get("/")
 async def root():
-    """Serve the frontend HTML page."""
-    html_path = Path(__file__).parent.parent / "index.html"
-    if html_path.exists():
-        return FileResponse(html_path)
+    """Root endpoint - serves status for Railway."""
     return {
         "status": "ok",
-        "service": "AI Todo Chatbot",
-        "message": "Server is running"
+        "service": "AI Todo Chatbot API",
+        "version": "2.1.0",
+        "message": "Server is running",
+        "environment": "railway" if is_railway() else "local",
+        "endpoints": {
+            "health": "/health",
+            "api": "/api",
+            "todos": "/api/todos",
+            "chat": "/api/chat"
+        }
     }
 
 @app.get("/styles.css")
