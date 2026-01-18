@@ -1,26 +1,66 @@
-# Vercel ignore file to exclude large or unnecessary files
+# Vercel ignore file - Deploy ONLY the public folder
+
+# Ignore backend API (deployed separately on Hugging Face)
+api/
+src/
+app.py
+server.py
+*.py
 
 # Ignore log files
 logs/
 *.log
 
-# Ignore data files (these are for local storage only)
+# Ignore data files
 data/
 
-# Ignore local Python cache
+# Ignore Python cache
 __pycache__/
 *.pyc
+*.pyo
 
 # Ignore git-related files
 .git/
-.gitignore
 
-# Ignore local environment files (but keep .env.example)
+# Ignore environment files
 .env
+.env.*
+!.env.example
 
 # Ignore OS-specific files
 .DS_Store
 Thumbs.db
 
-# Ignore test databases
+# Ignore test files
+test_*.py
+test_*.html
+tests/
+
+# Ignore databases
 *.db
+*.sqlite
+
+# Ignore documentation
+docs/
+*.md
+!README.md
+
+# Ignore deployment configs for other platforms
+Dockerfile*
+railway.json
+railway.config
+Procfile
+space.yaml
+requirements*.txt
+runtime.txt
+
+# Ignore build and deployment folders
+.vercel/
+.github/
+cloud/
+helm/
+k8s/
+scripts/
+specs/
+history/
+config/
