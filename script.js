@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             return 'http://localhost:8000';
         }
-        // Otherwise use Railway production URL
-        return 'https://chatbottodoapp-production.up.railway.app';
+        // Otherwise use Hugging Face Spaces production URL
+        return 'https://chatbot-todo-app.hf.space'; // Updated Hugging Face Space URL
     })();
 
     console.log(`🌐 Backend URL: ${BACKEND_URL}`);
@@ -231,33 +231,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addMessage(text, isUser) {
         const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message');
-        messageDiv.classList.add(isUser ? 'user-message' : 'bot-message');
+        messageDiv.className = 'flex items-start gap-3 animate-fade-in';
 
         const avatar = document.createElement('div');
-        avatar.classList.add('message-avatar');
-        avatar.textContent = isUser ? '👤' : '🤖';
+        if (isUser) {
+            avatar.className = 'w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md';
+            avatar.textContent = 'You';
+            avatar.style.fontSize = '10px';
+        } else {
+            avatar.className = 'w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md';
+            avatar.textContent = 'AI';
+        }
 
         const contentDiv = document.createElement('div');
-        contentDiv.classList.add('message-content');
+        contentDiv.className = 'flex-1';
 
         const headerDiv = document.createElement('div');
-        headerDiv.classList.add('message-header');
+        headerDiv.className = 'flex items-center gap-2 mb-1';
 
         const sender = document.createElement('span');
-        sender.classList.add('message-sender');
+        sender.className = 'text-sm font-semibold text-gray-800';
         sender.textContent = isUser ? 'You' : 'AI Assistant';
 
         const time = document.createElement('span');
-        time.classList.add('message-time');
+        time.className = 'text-xs text-gray-500';
         time.textContent = getCurrentTime();
 
         headerDiv.appendChild(sender);
         headerDiv.appendChild(time);
 
         const textDiv = document.createElement('div');
-        textDiv.classList.add('message-text');
-        textDiv.textContent = text;
+        if (isUser) {
+            textDiv.className = 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-2xl rounded-tl-none p-4 shadow-md';
+        } else {
+            textDiv.className = 'bg-white rounded-2xl rounded-tl-none p-4 shadow-md';
+        }
+
+        const messageText = document.createElement('p');
+        messageText.className = isUser ? 'text-sm leading-relaxed' : 'text-gray-700 text-sm leading-relaxed';
+        messageText.textContent = text;
+        textDiv.appendChild(messageText);
 
         contentDiv.appendChild(headerDiv);
         contentDiv.appendChild(textDiv);
@@ -298,54 +311,66 @@ document.addEventListener('DOMContentLoaded', function() {
         if (Array.isArray(todos) && todos.length > 0) {
             todos.forEach(todo => {
                 const li = document.createElement('li');
+                li.className = 'bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02]';
+
+                const container = document.createElement('div');
+                container.className = 'flex items-center justify-between gap-3';
+
+                const leftSection = document.createElement('div');
+                leftSection.className = 'flex items-center gap-3 flex-1';
+
+                // Checkbox/Status indicator
+                const statusIcon = document.createElement('div');
                 if (todo.completed) {
-                    li.classList.add('completed');
+                    statusIcon.className = 'w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 shadow-md';
+                    statusIcon.textContent = '✓';
+                } else {
+                    statusIcon.className = 'w-6 h-6 border-2 border-gray-300 rounded-full flex-shrink-0 hover:border-purple-500 cursor-pointer transition-colors';
+                    statusIcon.onclick = () => markComplete(todo.id, todo.title);
                 }
 
                 const taskText = document.createElement('span');
-                taskText.className = 'task-text';
+                if (todo.completed) {
+                    taskText.className = 'text-gray-500 line-through text-sm font-medium';
+                } else {
+                    taskText.className = 'text-gray-800 text-sm font-medium';
+                }
                 taskText.textContent = todo.title;
 
-                const actionDiv = document.createElement('div');
-                actionDiv.className = 'task-actions';
+                leftSection.appendChild(statusIcon);
+                leftSection.appendChild(taskText);
 
-                // Complete button (only for incomplete tasks)
-                if (!todo.completed) {
-                    const completeBtn = document.createElement('button');
-                    completeBtn.textContent = '✓';
-                    completeBtn.className = 'task-btn complete-btn';
-                    completeBtn.title = 'Mark as complete';
-                    completeBtn.onclick = () => markComplete(todo.id, todo.title);
-                    actionDiv.appendChild(completeBtn);
-                }
+                const actionDiv = document.createElement('div');
+                actionDiv.className = 'flex items-center gap-2';
 
                 // Update button
                 const updateBtn = document.createElement('button');
-                updateBtn.textContent = '✏️';
-                updateBtn.className = 'task-btn update-btn';
+                updateBtn.className = 'w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110';
+                updateBtn.innerHTML = '✏️';
                 updateBtn.title = 'Edit task';
                 updateBtn.onclick = () => updateTask(todo.id, todo.title);
                 actionDiv.appendChild(updateBtn);
 
                 // Delete button
                 const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = '🗑️';
-                deleteBtn.className = 'task-btn delete-btn';
+                deleteBtn.className = 'w-8 h-8 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110';
+                deleteBtn.innerHTML = '🗑️';
                 deleteBtn.title = 'Delete task';
                 deleteBtn.onclick = () => deleteTask(todo.id, todo.title);
                 actionDiv.appendChild(deleteBtn);
 
-                li.appendChild(taskText);
-                li.appendChild(actionDiv);
+                container.appendChild(leftSection);
+                container.appendChild(actionDiv);
+                li.appendChild(container);
                 todoItems.appendChild(li);
             });
         } else {
             const emptyState = document.createElement('li');
-            emptyState.className = 'empty-state';
+            emptyState.className = 'empty-state text-center py-12';
             emptyState.innerHTML = `
-                <div class="empty-icon">📭</div>
-                <p>No tasks yet</p>
-                <small>Add your first task to get started!</small>
+                <div class="text-6xl mb-4 animate-bounce-slow">📭</div>
+                <p class="text-gray-600 font-semibold text-lg mb-2">No tasks yet</p>
+                <p class="text-gray-500 text-sm">Add your first task to get started!</p>
             `;
             todoItems.appendChild(emptyState);
         }
@@ -598,6 +623,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
+        }
+    });
+
+    // Also handle Enter key with modern event listener
+    userInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (userInput.value.trim() !== '') {
+                sendMessage();
+            }
         }
     });
 
