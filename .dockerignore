@@ -1,0 +1,77 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+*.egg
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (if any)
+node_modules/
+npm-debug.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+*.md
+!requirements*.txt
+docs/
+
+# Test files
+tests/
+test/
+*_test.py
+test_*.py
+
+# Spec and history (development artifacts)
+.specify/
+specs/
+history/
+
+# Local data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Kubernetes configs (not needed in container)
+k8s/
+helm/
+cloud/
+
+# Other large directories
+.cache/
+tmp/
+temp/

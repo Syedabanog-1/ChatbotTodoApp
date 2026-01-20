@@ -1,0 +1,199 @@
+# =============================================================================
+# kagent Custom Agent for Chatbot Todo App
+# AI-Powered Operations and Monitoring
+# =============================================================================
+
+apiVersion: kagent.ai/v1alpha1
+kind: Agent
+metadata:
+  name: chatbot-operations-agent
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: custom-agent
+    target-app: chatbot-todo-app
+spec:
+  # Agent Description
+  description: |
+    AI-powered operations agent for the Chatbot Todo Application.
+    Monitors health, analyzes logs, provides scaling recommendations,
+    and assists with troubleshooting.
+
+  # Target Application
+  target:
+    namespace: chatbot-app
+    labelSelector:
+      app: chatbot-todo-app
+    resources:
+      - deployments
+      - pods
+      - services
+      - persistentvolumeclaims
+
+  # AI Model Configuration
+  model:
+    provider: openai
+    name: gpt-4
+    temperature: 0.1
+    systemPrompt: |
+      You are an AI operations assistant for a Kubernetes-deployed FastAPI chatbot application.
+      Your role is to:
+      1. Monitor application health and performance
+      2. Analyze logs for errors and anomalies
+      3. Provide scaling recommendations based on metrics
+      4. Help troubleshoot issues with clear explanations
+      5. Suggest optimizations for resource usage
+
+      The application is a Todo Chatbot built with:
+      - FastAPI backend (Python 3.11)
+      - SQLite database (persistent volume)
+      - OpenAI API integration
+      - Multilingual support
+
+      Always explain your findings clearly and provide actionable recommendations.
+
+  # Capabilities
+  capabilities:
+    # Health Monitoring
+    healthCheck:
+      enabled: true
+      interval: 60s
+      metrics:
+        - pod_status
+        - container_restarts
+        - readiness_probe
+        - liveness_probe
+
+    # Log Analysis
+    logAnalysis:
+      enabled: true
+      patterns:
+        - name: errors
+          pattern: "ERROR|Exception|Traceback"
+          severity: high
+        - name: warnings
+          pattern: "WARNING|WARN"
+          severity: medium
+        - name: api_errors
+          pattern: "HTTP [45][0-9][0-9]"
+          severity: high
+        - name: openai_issues
+          pattern: "OpenAI|rate_limit|quota"
+          severity: high
+
+    # Resource Monitoring
+    resourceMonitoring:
+      enabled: true
+      thresholds:
+        cpu_warning: 70
+        cpu_critical: 90
+        memory_warning: 75
+        memory_critical: 90
+
+    # Auto-scaling Recommendations
+    scalingRecommendations:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPUUtilization: 70
+      targetMemoryUtilization: 75
+
+    # Troubleshooting
+    troubleshooting:
+      enabled: true
+      commonIssues:
+        - name: pod_not_ready
+          symptoms:
+            - "Pod not becoming ready"
+            - "Readiness probe failed"
+          checks:
+            - "Check container logs for startup errors"
+            - "Verify environment variables are set"
+            - "Check if OpenAI API key is valid"
+        - name: high_latency
+          symptoms:
+            - "Slow response times"
+            - "Request timeouts"
+          checks:
+            - "Check CPU and memory utilization"
+            - "Review OpenAI API response times"
+            - "Check database query performance"
+        - name: database_issues
+          symptoms:
+            - "SQLite errors"
+            - "Database locked"
+          checks:
+            - "Verify PVC is mounted correctly"
+            - "Check write permissions on /app/data"
+            - "Review concurrent access patterns"
+
+  # Actions (read-only by default)
+  actions:
+    allowed:
+      - get_pod_logs
+      - describe_resources
+      - get_metrics
+      - list_events
+      - get_deployment_status
+    requireApproval:
+      - scale_deployment
+      - restart_pods
+      - update_resources
+
+  # Notifications
+  notifications:
+    enabled: true
+    channels:
+      - type: log
+        level: info
+    alerts:
+      - name: high_error_rate
+        condition: "error_count > 10 in 5m"
+        severity: warning
+      - name: pod_crash_loop
+        condition: "restart_count > 3 in 10m"
+        severity: critical
+      - name: resource_exhaustion
+        condition: "cpu_usage > 90% or memory_usage > 90%"
+        severity: warning
+
+  # Schedule
+  schedule:
+    healthCheck: "*/1 * * * *"  # Every minute
+    logAnalysis: "*/5 * * * *"  # Every 5 minutes
+    resourceReport: "0 * * * *"  # Every hour
+
+---
+# Agent Task Templates
+apiVersion: kagent.ai/v1alpha1
+kind: AgentTask
+metadata:
+  name: daily-health-report
+  namespace: kagent-system
+spec:
+  agent: chatbot-operations-agent
+  schedule: "0 8 * * *"  # Daily at 8 AM
+  task: |
+    Generate a comprehensive health report for the Chatbot Todo App including:
+    1. Pod status and uptime
+    2. Resource utilization trends
+    3. Error rate analysis
+    4. Performance metrics
+    5. Recommendations for improvements
+
+---
+apiVersion: kagent.ai/v1alpha1
+kind: AgentTask
+metadata:
+  name: incident-analysis
+  namespace: kagent-system
+spec:
+  agent: chatbot-operations-agent
+  trigger: manual
+  task: |
+    Analyze the current incident:
+    1. Identify affected pods and services
+    2. Review recent logs for root cause
+    3. Check resource metrics for anomalies
+    4. Provide step-by-step remediation guide
+    5. Suggest preventive measures

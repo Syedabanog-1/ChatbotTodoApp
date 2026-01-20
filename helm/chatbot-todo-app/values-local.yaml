@@ -1,0 +1,88 @@
+# =============================================================================
+# Helm Values for Local Minikube Deployment
+# Optimized for local development and learning
+# =============================================================================
+
+# Replica count - reduced for local development
+replicaCount: 1
+
+image:
+  repository: chatbot-todo-app
+  tag: "1.0"
+  pullPolicy: Never  # Use local image built with Minikube's Docker
+
+service:
+  type: NodePort
+  port: 8000
+  nodePort: 30080
+
+containerPort: 8000
+
+# OpenAI API Key - Override with --set or environment variable
+# NEVER commit real API keys to version control
+openaiApiKey: ""
+
+# Resource limits - reduced for local development
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "250m"
+
+# Persistent storage for SQLite database
+persistence:
+  enabled: true
+  size: 500Mi
+  storageClass: standard
+  accessMode: ReadWriteOnce
+
+# Health check settings - relaxed for local development
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Environment variables
+env:
+  PORT: "8000"
+  LOG_LEVEL: "DEBUG"
+  ENVIRONMENT: "local"
+
+# Ingress configuration for local access
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: chatbot.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Pod annotations for monitoring
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+# Node selector for local development
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

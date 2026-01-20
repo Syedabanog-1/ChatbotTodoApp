@@ -1,0 +1,274 @@
+# =============================================================================
+# kagent - AI-Powered Kubernetes Operations Agent
+# Deployment Configuration for Local Minikube
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: ai-operations
+
+---
+# Service Account for kagent
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kagent
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+
+---
+# ClusterRole for kagent (read-only by default for safety)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kagent-reader
+  labels:
+    app.kubernetes.io/name: kagent
+rules:
+  # Read access to common resources
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - secrets
+      - persistentvolumeclaims
+      - events
+      - namespaces
+      - nodes
+    verbs: ["get", "list", "watch"]
+  # Read access to apps
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+  # Read access to batch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+  # Read access to networking
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+  # Metrics access
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+
+---
+# ClusterRole for kagent operations (when enabled)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kagent-operator
+  labels:
+    app.kubernetes.io/name: kagent
+rules:
+  # Include reader permissions
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/exec
+      - services
+      - configmaps
+      - events
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Deployment operations
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/scale
+      - replicasets
+    verbs: ["get", "list", "watch", "update", "patch"]
+
+---
+# ClusterRoleBinding (using reader by default)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kagent-reader-binding
+  labels:
+    app.kubernetes.io/name: kagent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kagent-reader
+subjects:
+  - kind: ServiceAccount
+    name: kagent
+    namespace: kagent-system
+
+---
+# ConfigMap for kagent configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kagent-config
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+data:
+  config.yaml: |
+    # kagent Configuration
+
+    # AI Model Settings
+    ai:
+      provider: openai
+      model: gpt-4
+      temperature: 0.1
+      max_tokens: 2048
+
+    # Safety Settings
+    safety:
+      read_only_mode: true
+      require_approval: true
+      max_operations_per_minute: 10
+      blocked_namespaces:
+        - kube-system
+        - kube-public
+        - kagent-system
+
+    # Monitoring Settings
+    monitoring:
+      enabled: true
+      metrics_port: 9090
+      health_port: 8080
+
+    # Target Namespaces
+    namespaces:
+      - chatbot-app
+
+    # Agent Capabilities
+    capabilities:
+      - health_check
+      - log_analysis
+      - resource_monitoring
+      - deployment_status
+      - troubleshooting
+      - scaling_recommendations
+
+---
+# Secret for API keys
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kagent-secrets
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+type: Opaque
+stringData:
+  # Set via: kubectl create secret ... --from-literal=openai-api-key=YOUR_KEY
+  openai-api-key: "placeholder-replace-with-actual-key"
+
+---
+# kagent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kagent
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kagent
+        app.kubernetes.io/component: agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+    spec:
+      serviceAccountName: kagent
+      containers:
+        - name: kagent
+          image: ghcr.io/kagent-ai/kagent:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: health
+            - containerPort: 9090
+              name: metrics
+            - containerPort: 8081
+              name: api
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kagent-secrets
+                  key: openai-api-key
+            - name: KAGENT_CONFIG
+              value: /etc/kagent/config.yaml
+            - name: KAGENT_LOG_LEVEL
+              value: "info"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kagent
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: kagent-config
+
+---
+# Service for kagent API
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent
+  namespace: kagent-system
+  labels:
+    app.kubernetes.io/name: kagent
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: api
+      name: api
+    - port: 9090
+      targetPort: metrics
+      name: metrics
+  selector:
+    app.kubernetes.io/name: kagent

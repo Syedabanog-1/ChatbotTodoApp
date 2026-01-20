@@ -1,5 +1,9 @@
-# Minimal dependencies for Vercel serverless deployment
-# For full local development, use requirements.full.txt
+# Dependencies for Docker/Kubernetes deployment
+# For full local development with voice features, use requirements.full.txt
+
+# OpenAI Agents SDK and MCP
+openai-agents>=0.1.0
+mcp>=1.7.0
 
 # OpenAI API Client (essential for chatbot)
 openai>=1.50.0
@@ -12,3 +16,6 @@ pydantic>=2.0.0
 
 # Environment Configuration
 python-dotenv>=1.0.0
+
+# ASGI Server (required for Docker/Kubernetes deployment)
+uvicorn>=0.30.0
