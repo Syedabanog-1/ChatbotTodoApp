@@ -32,6 +32,18 @@ from src.models.task import Task
 from src.services.task_repository import TaskRepository
 
 # =========================
+# Helper Functions
+# =========================
+def is_railway() -> bool:
+    """Detect if running on Railway platform."""
+    return any([
+        os.getenv("RAILWAY_ENVIRONMENT"),
+        os.getenv("RAILWAY_ENVIRONMENT_NAME"),
+        os.getenv("RAILWAY_PROJECT_ID"),
+        os.getenv("RAILWAY_SERVICE_NAME")
+    ])
+
+# =========================
 # App Initialization
 # =========================
 app = FastAPI(
@@ -40,23 +52,85 @@ app = FastAPI(
     description="Serverless AI-powered Todo Chatbot with SQLite Persistence, Multilingual Support, and Conversation Context"
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Log startup information and validate configuration."""
+    logger.info("=" * 50)
+    logger.info("AI TODO CHATBOT API STARTING")
+    logger.info("=" * 50)
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"Working directory: {os.getcwd()}")
+
+    # Detect Railway environment
+    on_railway = is_railway()
+    logger.info(f"Railway detected: {on_railway}")
+    if on_railway:
+        logger.info(f"Railway service: {os.getenv('RAILWAY_SERVICE_NAME', 'unknown')}")
+
+    # Check for API key
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        logger.info(f"✓ OPENAI_API_KEY is set (length: {len(api_key)})")
+    else:
+        logger.error("✗ OPENAI_API_KEY is NOT set - AI features will not work!")
+
+    # Ensure /tmp directory exists if on Railway (but DON'T initialize DB during startup)
+    if on_railway:
+        os.makedirs("/tmp", exist_ok=True)
+        logger.info("✓ /tmp directory ready for Railway")
+
+    logger.info("⚠️ Database will be initialized on first request (lazy loading)")
+    logger.info("=" * 50)
+    logger.info("SERVER STARTUP COMPLETE - READY TO ACCEPT REQUESTS")
+    logger.info("=" * 50)
+
 # =========================
 # CORS
 # =========================
+# Allow Vercel frontend and localhost for development
+ALLOWED_ORIGINS = [
+    "https://chatbot-todo-app.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "*"  # Fallback for development
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change in production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # =========================
-# Database Initialization
+# Database Initialization (Lazy)
 # =========================
-# Initialize TaskRepository with SQLite database
-db_path = Path(__file__).parent.parent / "data" / "tasks.db"
-task_repo = TaskRepository(str(db_path))
+task_repo = None
+
+def get_task_repo():
+    """Get or create TaskRepository instance (lazy initialization)."""
+    global task_repo
+    if task_repo is None:
+        try:
+            # Use /tmp in production (Railway) for writable filesystem
+            if is_railway():
+                # Railway production environment - use /tmp
+                db_path = Path("/tmp/tasks.db")
+                logger.info(f"✓ Railway detected - using database path: {db_path}")
+            else:
+                # Local development
+                db_path = Path(__file__).parent.parent / "data" / "tasks.db"
+                logger.info(f"Using local development database path: {db_path}")
+
+            task_repo = TaskRepository(str(db_path))
+            logger.info("TaskRepository initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize TaskRepository: {e}", exc_info=True)
+            raise
+    return task_repo
 
 # =========================
 # Models
@@ -300,7 +374,7 @@ def handle_message(message: str, language: str = "en"):
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
-        task_repo.create(new_task)
+        get_task_repo().create(new_task)
         response_en = f"✅ Task added: {title}"
 
         # Translate response back if needed
@@ -310,7 +384,7 @@ def handle_message(message: str, language: str = "en"):
 
     # LIST TASKS
     if "list" in msg or "show" in msg or "tasks" in msg:
-        tasks = task_repo.get_all()
+        tasks = get_task_repo().get_all()
         if not tasks:
             response_en = "📝 No tasks available."
             if language != "en":
@@ -328,11 +402,11 @@ def handle_message(message: str, language: str = "en"):
 
     # COMPLETE TASK
     if "complete" in msg or "done" in msg or "finish" in msg:
-        tasks = task_repo.get_all()
+        tasks = get_task_repo().get_all()
         for t in tasks:
             if str(t.id) in msg or t.description.lower() in message_en.lower():
                 t.status = "completed"
-                task_repo.update(t)
+                get_task_repo().update(t)
                 response_en = f"✅ Completed: {t.description}"
 
                 if language != "en":
@@ -346,10 +420,10 @@ def handle_message(message: str, language: str = "en"):
 
     # DELETE TASK
     if "delete" in msg or "remove" in msg:
-        tasks = task_repo.get_all()
+        tasks = get_task_repo().get_all()
         for t in tasks:
             if str(t.id) in msg or t.description.lower() in message_en.lower():
-                task_repo.delete(t.id)
+                get_task_repo().delete(t.id)
                 response_en = f"🗑️ Deleted: {t.description}"
 
                 if language != "en":
@@ -368,9 +442,74 @@ def handle_message(message: str, language: str = "en"):
 # API ROUTES
 # =========================
 
+@app.get("/")
+async def root():
+    """Root endpoint - serves status for Railway."""
+    return {
+        "status": "ok",
+        "service": "AI Todo Chatbot API",
+        "version": "2.1.0",
+        "message": "Server is running",
+        "environment": "railway" if is_railway() else "local",
+        "endpoints": {
+            "health": "/health",
+            "api": "/api",
+            "todos": "/api/todos",
+            "chat": "/api/chat"
+        }
+    }
+
+@app.get("/styles.css")
+async def serve_styles():
+    """Serve the CSS file."""
+    css_path = Path(__file__).parent.parent / "styles.css"
+    if css_path.exists():
+        return FileResponse(css_path, media_type="text/css")
+    return {"error": "CSS not found"}
+
+@app.get("/script.js")
+async def serve_script():
+    """Serve the JavaScript file with no-cache headers."""
+    js_path = Path(__file__).parent.parent / "script.js"
+    if js_path.exists():
+        return FileResponse(
+            js_path,
+            media_type="application/javascript",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+    return {"error": "JS not found"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Railway."""
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "environment": "railway" if is_railway() else "local"
+    }
+
+    # Check database without failing health check
+    try:
+        task_count = len(get_task_repo().get_all())
+        health_status["database"] = "connected"
+        health_status["tasks_count"] = task_count
+    except Exception as e:
+        logger.warning(f"Database check failed in health endpoint: {e}")
+        health_status["database"] = "unavailable"
+        health_status["database_error"] = str(e)
+
+    # Check API key without exposing it
+    health_status["openai_configured"] = bool(os.getenv("OPENAI_API_KEY"))
+
+    return health_status
+
 @app.get("/api")
 async def api_root():
-    task_count = len(task_repo.get_all())
+    task_count = len(get_task_repo().get_all())
     return {
         "status": "ok",
         "service": "AI Todo Chatbot with SQLite",
@@ -388,7 +527,7 @@ async def api_root():
 
 @app.get("/api/todos")
 async def get_todos():
-    tasks = task_repo.get_all()
+    tasks = get_task_repo().get_all()
     return [task_to_dict(t) for t in tasks]
 
 @app.get("/api/context")
@@ -430,7 +569,7 @@ async def chat(req: ChatRequest):
         add_to_context(req.message, reply, language)
 
         # Get all tasks
-        tasks = task_repo.get_all()
+        tasks = get_task_repo().get_all()
 
         logger.info(f"Chat response prepared: language={language}, tasks_count={len(tasks)}")
 
@@ -503,26 +642,6 @@ async def translate_batch(req: BatchTranslateRequest):
             "count": len(req.tasks),
             "error": str(e)
         }
-
-# =========================
-# Frontend Serving
-# =========================
-@app.get("/")
-async def serve_frontend():
-    index_file = Path(__file__).parent.parent / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    return {"message": "Frontend not found. API is running."}
-
-# =========================
-# Static files
-# =========================
-@app.get("/{file_path:path}")
-async def static_files(file_path: str):
-    file = Path(__file__).parent.parent / file_path
-    if file.exists():
-        return FileResponse(file)
-    return {"error": "File not found"}
 
 # =========================
 # Vercel export

@@ -1,24 +1,48 @@
-
-import uvicorn
+"""
+Production server entry point for Railway deployment.
+Uses uvicorn to run the FastAPI app.
+"""
 import os
 import sys
+import traceback
 
-# Ensure project root is in path
+# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == "__main__":
-    print("Starting AI Chatbot Server...")
-    print("Documentation: http://localhost:8000/docs")
-    print("API endpoints available at:")
-    print("  - GET / (health check)")
-    print("  - POST /chat (chat endpoint)")
-    print("  - GET /api/todos (get todos)")
-    print("  - POST /api/chat (web chat endpoint)")
-
-    # Import the app from the module
     try:
+        import uvicorn
+
+        print("=" * 50)
+        print("STARTING AI CHATBOT SERVER")
+        print("=" * 50)
+        print(f"Python version: {sys.version}")
+        print(f"Working directory: {os.getcwd()}")
+        print(f"PORT environment variable: {os.environ.get('PORT', 'NOT SET')}")
+
+        port = int(os.environ.get("PORT", 8000))
+        print(f"Will bind to port: {port}")
+
+        print("\nImporting FastAPI app...")
         from api.index import app
-        uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=False)
+        print("[OK] FastAPI app imported successfully")
+
+        print(f"\nStarting uvicorn server on 0.0.0.0:{port}...")
+        print("=" * 50)
+
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            access_log=True
+        )
     except Exception as e:
-        print(f"Failed to start server: {e}")
-        input("Press Enter to exit...")
+        print("\n" + "=" * 50)
+        print("FATAL ERROR DURING STARTUP")
+        print("=" * 50)
+        print(f"Error: {e}")
+        print("\nFull traceback:")
+        traceback.print_exc()
+        print("=" * 50)
+        sys.exit(1)

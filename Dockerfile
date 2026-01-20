@@ -27,8 +27,5 @@ COPY . .
 # Create data directory for SQLite database
 RUN mkdir -p data
 
-# Expose port
-EXPOSE $PORT
-
 # Run the server
 CMD ["python", "run_server.py"]
