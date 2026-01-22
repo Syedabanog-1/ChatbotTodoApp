@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Configuration - Auto-detect environment (FR-021)
     const BACKEND_URL = (function() {
-        // If on localhost, use local backend
+        // If on localhost, use local backend with port 8000
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             return 'http://localhost:8000';
         }
-        // Otherwise use Hugging Face Spaces production URL
-        return 'https://chatbot-todo-app.hf.space'; // Updated Hugging Face Space URL
+        // Otherwise use the current origin (same host/port serving the frontend)
+        return window.location.origin;
     })();
 
     console.log(`🌐 Backend URL: ${BACKEND_URL}`);

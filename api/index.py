@@ -444,7 +444,28 @@ def handle_message(message: str, language: str = "en"):
 
 @app.get("/")
 async def root():
-    """Root endpoint - serves status for Railway."""
+    """Root endpoint - serves the frontend HTML."""
+    html_path = Path(__file__).parent.parent / "index.html"
+    if html_path.exists():
+        return FileResponse(html_path, media_type="text/html")
+    # Fallback to JSON status if HTML not found
+    return {
+        "status": "ok",
+        "service": "AI Todo Chatbot API",
+        "version": "2.1.0",
+        "message": "Server is running",
+        "environment": "railway" if is_railway() else "local",
+        "endpoints": {
+            "health": "/health",
+            "api": "/api",
+            "todos": "/api/todos",
+            "chat": "/api/chat"
+        }
+    }
+
+@app.get("/status")
+async def status():
+    """Status endpoint - serves JSON status."""
     return {
         "status": "ok",
         "service": "AI Todo Chatbot API",
